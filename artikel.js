@@ -3,7 +3,7 @@ import {
   addDoc, collection, doc, updateDoc, deleteDoc, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { chf, parseChf, toInput, esc } from "./geld.js";
-import { ALLERGENE, ABTEILUNGEN, EINHEITEN, LAGERHINWEISE, abteilungLabel } from "./stammdaten.js";
+import { ALLERGENE, ABTEILUNGEN, EINHEITEN, LAGERHINWEISE, HINWEISE, abteilungLabel } from "./stammdaten.js";
 import { preislisteHtml, artikelblaetterHtml } from "./drucken.js";
 import { toast, openModal, closeModal } from "./ui.js";
 
@@ -129,6 +129,10 @@ export function initArtikel(session) {
         ${spur.length ? `<div class="allerg-line"><span class="al-label">Kann Spuren enthalten</span><div class="badge-row">${spur.map((x) => `<span class="al-badge al-spur">${esc(x.label)}</span>`).join("")}</div></div>` : ""}
         ${!enth.length && !spur.length ? '<p class="hint-text" style="margin:0;">Keine Allergene erfasst.</p>' : ""}
       </div>
+      <div class="detail-block">
+        <div class="db-title">Nützliche Hinweise</div>
+        <div class="hinweis-liste">${HINWEISE.map((h) => `<span class="hw ${a.hinweise?.[h.key] ? "hw-ja" : ""}">${esc(h.label)}: <strong>${a.hinweise?.[h.key] ? "Ja" : "Nein"}</strong></span>`).join("")}</div>
+      </div>
       ${a.updatedBy ? `<p class="hint-text" style="margin:14px 0 0;">Zuletzt bearbeitet von ${esc(a.updatedBy)}${a.updatedAt?.toDate ? ` am ${a.updatedAt.toDate().toLocaleDateString("de-CH")}` : ""}</p>` : ""}`;
     openModal("detail-modal");
   }
@@ -213,6 +217,31 @@ export function initArtikel(session) {
         <button type="button" data-stufe="enthalten">Enthält</button>
       </div>
     </div>`).join("");
+  f("a-hinweise").innerHTML = HINWEISE.map((h) => `
+    <div class="allergen-row hinweis-row" data-key="${h.key}">
+      <span class="ar-label">${esc(h.label)}</span>
+      <div class="seg">
+        <button type="button" data-ja="0">Nein</button>
+        <button type="button" data-ja="1">Ja</button>
+      </div>
+    </div>`).join("");
+  function setzeHinweis(key, ja) {
+    const row = f("a-hinweise").querySelector(`[data-key="${key}"]`);
+    row.dataset.ja = ja ? "1" : "0";
+    row.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.ja === row.dataset.ja));
+  }
+  f("a-hinweise").addEventListener("click", (e) => {
+    const b = e.target.closest(".seg button");
+    if (!b) return;
+    const key = b.closest(".hinweis-row").dataset.key;
+    const ja = b.dataset.ja === "1";
+    setzeHinweis(key, ja);
+    // Logisch zusammenhängende Angaben gleich mitsetzen
+    if (ja && key === "vegan") { setzeHinweis("vegetarisch", true); setzeHinweis("schweinefett", false); }
+    if (ja && key === "vegetarisch") setzeHinweis("schweinefett", false);
+    if (ja && key === "schweinefett") { setzeHinweis("vegetarisch", false); setzeHinweis("vegan", false); }
+    if (!ja && key === "vegetarisch") setzeHinweis("vegan", false);
+  });
   f("a-allergene").addEventListener("click", (e) => {
     const b = e.target.closest(".seg button");
     if (!b) return;
@@ -246,6 +275,7 @@ export function initArtikel(session) {
     f("a-zutaten").value = a?.zutaten || "";
     f("a-abteilungen").querySelectorAll("input").forEach((i) => { i.checked = (a?.abteilungen || []).includes(i.value); });
     ALLERGENE.forEach((x) => setzeAllergen(x.key, a?.allergene?.[x.key]));
+    HINWEISE.forEach((h) => setzeHinweis(h.key, a?.hinweise?.[h.key] === true));
     f("edit-extra").style.display = a ? "flex" : "none";
     if (a) f("edit-toggle").textContent = a.active === false ? "Wieder aktivieren" : "Deaktivieren";
     closeModal("detail-modal");
@@ -293,6 +323,9 @@ export function initArtikel(session) {
     const allergene = {};
     f("a-allergene").querySelectorAll(".allergen-row").forEach((r) => { if (r.dataset.stufe) allergene[r.dataset.key] = r.dataset.stufe; });
 
+    const hinweise = {};
+    f("a-hinweise").querySelectorAll(".hinweis-row").forEach((r) => { hinweise[r.dataset.key] = r.dataset.ja === "1"; });
+
     const daten = {
       artikelnummer,
       name,
@@ -308,6 +341,7 @@ export function initArtikel(session) {
       lagerung,
       zutaten: f("a-zutaten").value.trim(),
       allergene,
+      hinweise,
       updatedAt: serverTimestamp(),
       updatedBy: session.profile.name || "",
     };

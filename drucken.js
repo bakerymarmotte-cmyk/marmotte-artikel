@@ -1,5 +1,5 @@
 import { chf, esc } from "./geld.js";
-import { ALLERGENE, abteilungLabel } from "./stammdaten.js";
+import { ALLERGENE, HINWEISE, abteilungLabel } from "./stammdaten.js";
 
 // Druckvorlagen: Preisliste (Tabelle nach Kategorien) und Artikelblätter (ein A4 pro Artikel).
 // Der Inhalt wird in #print-area geschrieben; style.css zeigt beim Drucken nur diesen Bereich.
@@ -100,6 +100,17 @@ export function artikelblaetterHtml(rows, { katName, mengeText }) {
           ${ALLERGENE.map((x) => {
             const s = a.allergene?.[x.key];
             return `<tr class="${s ? "is-" + s : ""}"><td>${esc(x.label)}</td><td>${s === "enthalten" ? "●" : ""}</td><td>${s === "spuren" ? "○" : ""}</td></tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+
+      <h4>Nützliche Hinweise</h4>
+      <table class="ab-allergene ab-hinweise">
+        <thead><tr><th>Hinweis</th><th>Ja</th><th>Nein</th></tr></thead>
+        <tbody>
+          ${HINWEISE.map((h) => {
+            const ja = a.hinweise?.[h.key] === true;
+            return `<tr class="${ja ? "is-enthalten" : ""}"><td>${esc(h.label)}</td><td>${ja ? "●" : ""}</td><td>${ja ? "" : "●"}</td></tr>`;
           }).join("")}
         </tbody>
       </table>

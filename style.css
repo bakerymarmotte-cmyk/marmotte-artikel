@@ -368,6 +368,12 @@ h3.section-title { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
 .switch-row input:focus-visible + .sw { box-shadow: 0 0 0 3px var(--m-chip-bg); }
 .switch-row .hint-text { font-size: 12.5px; }
 
+/* Nützliche Hinweise */
+.hinweis-row[data-ja="1"] .seg button.active { background: var(--m-accent); color: var(--m-accent-fg); }
+.hinweis-liste { display: flex; flex-wrap: wrap; gap: 6px; }
+.hw { font-size: 12.5px; padding: 4px 10px; border-radius: 999px; background: var(--m-card-soft); border: 1px solid var(--m-border); color: var(--m-muted); }
+.hw-ja { background: var(--m-chip-bg); border-color: transparent; color: var(--m-chip-fg); }
+
 /* Art.-Nr. + Name */
 .nr-name-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px; }
 .seg-wide { display: flex; }

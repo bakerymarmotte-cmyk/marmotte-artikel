@@ -38,3 +38,10 @@ export const LAGERHINWEISE = [
   "Bei Raumtemperatur lagern",
   "Tiefgekühlt lagern (–18 °C)",
 ];
+
+// Nützliche Hinweise (je Ja/Nein)
+export const HINWEISE = [
+  { key: "schweinefett", label: "Schweinefett" },
+  { key: "vegetarisch",  label: "Vegetarisch" },
+  { key: "vegan",        label: "Vegan" },
+];
