@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marmotte Artikel – Login</title>
+<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" sizes="120x120" href="assets/apple-touch-icon-120.png">
+<link rel="apple-touch-icon" sizes="152x152" href="assets/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="assets/apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon-180.png">
+<meta name="msapplication-config" content="browserconfig.xml">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f5f4f2">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Marmotte">
+<link rel="stylesheet" href="https://bakerymarmotte-cmyk.github.io/marmotte-design/marmotte.css">
+<link rel="stylesheet" href="style.css">
+<script src="https://bakerymarmotte-cmyk.github.io/marmotte-design/theme.js"></script>
+<script src="https://bakerymarmotte-cmyk.github.io/marmotte-design/icons.js" defer></script>
+<style>
+  .login-wrap { width: 100%; max-width: 384px; }
+  .login-card { padding: 24px 20px 20px; text-align: center; }
+  .login-card h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+  .login-card .sub { color: var(--m-muted); font-size: 14px; margin: 0 0 20px; }
+  form { text-align: left; }
+  .forgot-link {
+    display: block; width: 100%; margin-top: 12px; padding: 6px;
+    text-align: center; font: inherit; font-size: 13.5px; color: var(--m-muted);
+    background: none; border: none; cursor: pointer; text-decoration: underline;
+  }
+  .forgot-link:hover { color: var(--m-accent-text); }
+  #forgot-panel { display: none; text-align: left; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--m-border); }
+  #forgot-panel.open { display: block; }
+  #forgot-panel p.sub { color: var(--m-muted); font-size: 13px; margin: 0 0 14px; }
+  .success-text { color: var(--m-success); font-size: 13.5px; margin: 0 0 12px; }
+  .success-text:empty { display: none; }
+  .footer-note { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--m-faint); font-size: 12px; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<div class="centered-screen">
+  <div class="login-wrap">
+    <div class="theme-row"><button class="m-theme-btn" data-theme-toggle aria-label="Hell/Dunkel umschalten"></button></div>
+    <div class="brand-col">
+      <div class="brand-logo"><i data-icon="croissant" data-size="30"></i></div>
+      <div class="brand-title">Marmotte</div>
+      <div class="brand-sub">Artikel</div>
+    </div>
+
+    <div class="card login-card">
+      <h1>Anmelden</h1>
+      <p class="sub">Melde dich mit deinen Zugangsdaten an.</p>
+
+      <form id="login-form">
+        <div class="field">
+          <label for="email">E-Mail</label>
+          <input type="email" id="email" name="email" required autocomplete="username">
+        </div>
+        <div class="field">
+          <label for="password">Passwort</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password">
+        </div>
+
+        <div class="error-text" id="error-text"></div>
+
+        <button type="submit" class="btn btn-primary" id="submit-btn" style="width:100%;">
+          Einloggen
+        </button>
+      </form>
+
+      <button type="button" class="forgot-link" id="forgot-toggle">Passwort vergessen?</button>
+
+      <div id="forgot-panel">
+        <p class="sub">Gib deine E-Mail-Adresse ein. Wir senden dir einen Link zum Zurücksetzen deines Passworts.</p>
+        <form id="forgot-form">
+          <div class="field">
+            <label for="forgot-email">E-Mail</label>
+            <input type="email" id="forgot-email" required autocomplete="username">
+          </div>
+          <div class="error-text" id="forgot-error"></div>
+          <div class="success-text" id="forgot-success"></div>
+          <button type="submit" class="btn btn-secondary" id="forgot-submit-btn" style="width:100%;">
+            Link senden
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { auth, db } from "./firebase-config.js";
+  import { signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const form = document.getElementById("login-form");
+  const errorText = document.getElementById("error-text");
+  const submitBtn = document.getElementById("submit-btn");
+
+  const messages = {
+    "auth/invalid-email": "Diese E-Mail-Adresse ist ungültig.",
+    "auth/user-disabled": "Dieses Konto wurde deaktiviert.",
+    "auth/user-not-found": "Kein Konto mit dieser E-Mail-Adresse gefunden.",
+    "auth/wrong-password": "Falsches Passwort.",
+    "auth/invalid-credential": "E-Mail oder Passwort ist falsch.",
+    "auth/too-many-requests": "Zu viele Versuche. Bitte kurz warten und erneut versuchen.",
+  };
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorText.textContent = "";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Wird geprüft …";
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const uid = cred.user.uid;
+
+      // Rolle des Nutzers aus Firestore laden (Sammlung "users", Dokument-ID = uid)
+      const userDoc = await getDoc(doc(db, "users", uid));
+
+      if (!userDoc.exists()) {
+        errorText.textContent = "Dieses Konto ist noch nicht vollständig eingerichtet. Bitte an den Admin wenden.";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Einloggen";
+        return;
+      }
+
+      const userData = userDoc.data();
+
+      if (userData.active === false) {
+        await signOut(auth);
+        errorText.textContent = "Dieses Konto wurde deaktiviert. Bitte wende dich an die Leitung oder den Admin.";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Einloggen";
+        return;
+      }
+
+      // Rolle merken, damit die nächste Seite weiss, welchen Bereich sie zeigen soll
+      sessionStorage.setItem("marmotte_role", userData.role || "mitarbeiter");
+      sessionStorage.setItem("marmotte_name", userData.name || "");
+
+      if (userData.mustChangePassword) {
+        window.location.href = "change-password.html";
+        return;
+      }
+
+      window.location.href = "app.html";
+
+    } catch (err) {
+      console.error(err);
+      errorText.textContent = messages[err.code] || "Anmeldung fehlgeschlagen. Bitte erneut versuchen.";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Einloggen";
+    }
+  });
+
+  // Falls schon eingeloggt: direkt weiterleiten (optional, hier nur Info-Konsole)
+  onAuthStateChanged(auth, (user) => {
+    // Bewusst kein Auto-Redirect hier, damit man sich auf dieser Testseite
+    // auch bewusst neu einloggen kann.
+  });
+
+  // Passwort vergessen: Panel ein-/ausblenden
+  const forgotToggle = document.getElementById("forgot-toggle");
+  const forgotPanel = document.getElementById("forgot-panel");
+  const forgotForm = document.getElementById("forgot-form");
+  const forgotError = document.getElementById("forgot-error");
+  const forgotSuccess = document.getElementById("forgot-success");
+  const forgotSubmitBtn = document.getElementById("forgot-submit-btn");
+
+  const forgotMessages = {
+    "auth/invalid-email": "Diese E-Mail-Adresse ist ungültig.",
+    "auth/too-many-requests": "Zu viele Versuche. Bitte kurz warten und erneut versuchen.",
+  };
+
+  forgotToggle.addEventListener("click", () => {
+    forgotPanel.classList.toggle("open");
+    forgotError.textContent = "";
+    forgotSuccess.textContent = "";
+    forgotToggle.textContent = forgotPanel.classList.contains("open") ? "Abbrechen" : "Passwort vergessen?";
+  });
+
+  forgotForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    forgotError.textContent = "";
+    forgotSuccess.textContent = "";
+    forgotSubmitBtn.disabled = true;
+    forgotSubmitBtn.textContent = "Wird gesendet …";
+
+    const email = document.getElementById("forgot-email").value.trim();
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      forgotSuccess.textContent = "Falls ein Konto mit dieser E-Mail existiert, wurde ein Link zum Zurücksetzen gesendet.";
+      forgotForm.reset();
+    } catch (err) {
+      console.error(err);
+      // Aus Sicherheitsgründen keine Info preisgeben, ob die E-Mail existiert oder nicht,
+      // ausser bei offensichtlich ungültigem Format oder Rate-Limit.
+      if (err.code === "auth/invalid-email" || err.code === "auth/too-many-requests") {
+        forgotError.textContent = forgotMessages[err.code];
+      } else {
+        forgotSuccess.textContent = "Falls ein Konto mit dieser E-Mail existiert, wurde ein Link zum Zurücksetzen gesendet.";
+      }
+    } finally {
+      forgotSubmitBtn.disabled = false;
+      forgotSubmitBtn.textContent = "Link senden";
+    }
+  });
+
+  // Service Worker registrieren, damit die App auf dem Smartphone installierbar wird
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js").catch((err) => {
+        console.warn("Service Worker konnte nicht registriert werden:", err);
+      });
+    });
+  }
+</script>
+
+</body>
+</html>

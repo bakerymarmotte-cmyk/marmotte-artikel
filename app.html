@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Marmotte Artikel</title>
+<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" sizes="120x120" href="assets/apple-touch-icon-120.png">
+<link rel="apple-touch-icon" sizes="152x152" href="assets/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="assets/apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon-180.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f5f4f2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Artikel">
+<link rel="stylesheet" href="https://bakerymarmotte-cmyk.github.io/marmotte-design/marmotte.css">
+<link rel="stylesheet" href="style.css">
+<script src="https://bakerymarmotte-cmyk.github.io/marmotte-design/theme.js"></script>
+<script src="https://bakerymarmotte-cmyk.github.io/marmotte-design/icons.js" defer></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-logo"><i data-icon="croissant"></i></div>
+    <div>
+      <div class="brand-name">Marmotte</div>
+      <div class="brand-sub">Artikel</div>
+    </div>
+  </div>
+  <div class="who">
+    <span class="name" id="user-name-label"></span>
+    <button class="m-theme-btn" data-theme-toggle aria-label="Hell/Dunkel umschalten"></button>
+    <button class="logout-btn" id="logout-btn" aria-label="Abmelden"><i data-icon="log-out" data-size="16"></i></button>
+  </div>
+</div>
+
+<div class="nav-wrap admin-only">
+<nav class="main-nav" id="main-nav">
+  <button data-tab="artikel" class="active"><span class="icon"><i data-icon="package"></i></span>Artikel</button>
+  <button data-tab="kategorien"><span class="icon"><i data-icon="tag"></i></span>Kategorien</button>
+  <button data-tab="team"><span class="icon"><i data-icon="users"></i></span>Konten</button>
+</nav>
+</div>
+
+<main>
+
+  <!-- ARTIKEL -->
+  <section class="tab-panel active" id="panel-artikel">
+    <div class="search-box">
+      <i data-icon="search" data-size="16"></i>
+      <input type="search" id="suche" placeholder="Artikel suchen …" autocomplete="off">
+    </div>
+    <div class="filter-row">
+      <select id="filter-kategorie"><option value="">Alle Kategorien</option></select>
+      <select id="filter-abteilung"><option value="">Alle Abteilungen</option></select>
+    </div>
+    <div class="list-head">
+      <span class="hint-text" id="artikel-anzahl"></span>
+      <label class="check-inline admin-only"><input type="checkbox" id="zeige-inaktive"> Inaktive zeigen</label>
+    </div>
+    <button class="btn btn-primary admin-only add-btn" id="artikel-neu" type="button"><i data-icon="plus" data-size="16"></i> Neuer Artikel</button>
+    <div id="artikel-list"><p class="hint-text">Lädt …</p></div>
+  </section>
+
+  <!-- KATEGORIEN (Admin) -->
+  <section class="tab-panel" id="panel-kategorien">
+    <div class="card form-card">
+      <h3 class="section-title" id="kat-form-title">Neue Kategorie</h3>
+      <div class="field"><label for="kat-name">Name</label><input type="text" id="kat-name" maxlength="40" placeholder="z.B. Brot"></div>
+      <div class="error-text" id="kat-error"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="kat-abbrechen" type="button" style="display:none;">Abbrechen</button>
+        <button class="btn btn-primary" id="kat-speichern" type="button">Kategorie anlegen</button>
+      </div>
+    </div>
+    <div id="kat-list"></div>
+  </section>
+
+  <!-- KONTEN (Admin) -->
+  <section class="tab-panel" id="panel-team">
+    <div class="card form-card">
+      <h3 class="section-title">Neues Konto</h3>
+      <div class="form-row-2">
+        <div class="field">
+          <label for="emp-rolle">Art</label>
+          <select id="emp-rolle">
+            <option value="abteilung">Abteilung</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="field" id="emp-abteilung-feld">
+          <label for="emp-abteilung">Abteilung</label>
+          <select id="emp-abteilung"></select>
+        </div>
+      </div>
+      <div class="field"><label for="emp-name">Name</label><input type="text" id="emp-name" maxlength="60" placeholder="z.B. Dorfladen"></div>
+      <div class="field"><label for="emp-email">E-Mail</label><input type="email" id="emp-email"></div>
+      <div class="field"><label for="emp-password">Passwort</label><input type="text" id="emp-password" minlength="8"></div>
+      <span class="hint-text" id="emp-hinweis"></span>
+      <div class="error-text" id="emp-error" style="margin-top:12px;"></div>
+      <button class="btn btn-primary" id="emp-speichern" type="button" style="width:100%; margin-top:8px;"><i data-icon="user-plus" data-size="16"></i> Konto erstellen</button>
+    </div>
+    <div id="team-list"></div>
+  </section>
+
+</main>
+
+<!-- Modal: Artikel ansehen -->
+<div class="modal-backdrop" id="detail-modal">
+  <div class="modal-sheet">
+    <div id="detail-body"></div>
+    <div class="modal-actions" style="margin-top:18px;">
+      <button class="btn btn-secondary" id="detail-close" type="button">Schliessen</button>
+      <button class="btn btn-primary admin-only" id="detail-edit" type="button"><i data-icon="pencil" data-size="16"></i> Bearbeiten</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Artikel bearbeiten (Admin) -->
+<div class="modal-backdrop" id="edit-modal">
+  <div class="modal-sheet modal-wide">
+    <h3 id="edit-title">Neuer Artikel</h3>
+
+    <div class="field"><label for="a-name">Name *</label><input type="text" id="a-name" maxlength="80" placeholder="z.B. Bauernbrot"></div>
+    <div class="field">
+      <label for="a-kategorie">Kategorie *</label>
+      <select id="a-kategorie"></select>
+    </div>
+
+    <div class="field">
+      <label>Abteilungen</label>
+      <div class="chip-group" id="a-abteilungen"></div>
+    </div>
+
+    <div class="form-row-2">
+      <div class="field"><label for="a-preis-laden">Preis Laden (CHF)</label><input type="text" id="a-preis-laden" inputmode="decimal" placeholder="leer = kein Preis"></div>
+      <div class="field"><label for="a-preis-tearoom">Preis Tea Room (CHF)</label><input type="text" id="a-preis-tearoom" inputmode="decimal" placeholder="leer = kein Preis"></div>
+    </div>
+
+    <div class="form-row-2">
+      <div class="field">
+        <label for="a-menge">Menge / Gewicht</label>
+        <div class="menge-row">
+          <input type="text" id="a-menge" inputmode="decimal" placeholder="z.B. 500">
+          <select id="a-einheit"></select>
+        </div>
+      </div>
+      <div class="field"><label for="a-haltbarkeit">Haltbarkeit (Tage)</label><input type="text" id="a-haltbarkeit" inputmode="numeric" placeholder="z.B. 3"></div>
+    </div>
+
+    <div class="field">
+      <label for="a-zutaten">Zutaten</label>
+      <textarea id="a-zutaten" rows="4" maxlength="3000" placeholder="z.B. Weizenmehl, Wasser, Roggenmehl, Salz, Hefe"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Allergene</label>
+      <div class="allergen-grid" id="a-allergene"></div>
+    </div>
+
+    <div class="error-text" id="edit-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="edit-cancel" type="button">Abbrechen</button>
+      <button class="btn btn-primary" id="edit-save" type="button"><i data-icon="save" data-size="16"></i> Speichern</button>
+    </div>
+    <div class="edit-extra" id="edit-extra">
+      <button class="btn btn-secondary btn-small" id="edit-toggle" type="button"></button>
+      <button class="btn btn-danger btn-small" id="edit-delete" type="button"><i data-icon="trash-2" data-size="14"></i> Löschen</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
