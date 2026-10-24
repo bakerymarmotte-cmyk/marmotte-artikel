@@ -63,7 +63,10 @@
         <label class="check-inline admin-only"><input type="checkbox" id="zeige-inaktive"> Inaktive zeigen</label>
       </div>
     </div>
-    <button class="btn btn-primary admin-only add-btn" id="artikel-neu" type="button"><i data-icon="plus" data-size="16"></i> Neuer Artikel</button>
+    <div class="btn-row list-btns">
+      <button class="btn btn-secondary" id="drucken-btn" type="button"><i data-icon="printer" data-size="16"></i> Drucken</button>
+      <button class="btn btn-primary admin-only" id="artikel-neu" type="button"><i data-icon="plus" data-size="16"></i> Neuer Artikel</button>
+    </div>
     <div id="artikel-list"><p class="hint-text">Lädt …</p></div>
   </section>
 
@@ -126,7 +129,10 @@
   <div class="modal-sheet modal-wide">
     <h3 id="edit-title">Neuer Artikel</h3>
 
-    <div class="field"><label for="a-name">Name *</label><input type="text" id="a-name" maxlength="80" placeholder="z.B. Bauernbrot"></div>
+    <div class="nr-name-row">
+      <div class="field"><label for="a-nummer">Art.-Nr.</label><input type="text" id="a-nummer" maxlength="20" placeholder="z.B. 1001"></div>
+      <div class="field"><label for="a-name">Name *</label><input type="text" id="a-name" maxlength="80" placeholder="z.B. Bauernbrot"></div>
+    </div>
     <div class="field">
       <label for="a-kategorie">Kategorie *</label>
       <select id="a-kategorie"></select>
@@ -160,6 +166,12 @@
     </div>
 
     <div class="field">
+      <label for="a-lagerung">Lagerhinweis</label>
+      <select id="a-lagerung"></select>
+      <input type="text" id="a-lagerung-eigen" maxlength="200" placeholder="Eigener Lagerhinweis" style="display:none; margin-top:6px;">
+    </div>
+
+    <div class="field">
       <label for="a-zutaten">Zutaten</label>
       <textarea id="a-zutaten" rows="4" maxlength="3000" placeholder="z.B. Weizenmehl, Wasser, Roggenmehl, Salz, Hefe"></textarea>
     </div>
@@ -180,6 +192,36 @@
     </div>
   </div>
 </div>
+
+<!-- Modal: Drucken -->
+<div class="modal-backdrop" id="print-modal">
+  <div class="modal-sheet">
+    <h3>Drucken</h3>
+    <div class="field">
+      <label>Was drucken?</label>
+      <div class="seg seg-wide" id="print-art">
+        <button type="button" data-wert="preisliste" class="active">Preisliste</button>
+        <button type="button" data-wert="blaetter">Artikelblätter</button>
+      </div>
+    </div>
+    <div class="field" id="print-preise-feld">
+      <label>Preise</label>
+      <div class="seg seg-wide" id="print-preise">
+        <button type="button" data-wert="beide" class="active">Beide</button>
+        <button type="button" data-wert="laden">Nur Laden</button>
+        <button type="button" data-wert="tearoom">Nur Tea Room</button>
+      </div>
+    </div>
+    <p class="hint-text" id="print-info"></p>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-secondary" id="print-cancel" type="button">Abbrechen</button>
+      <button class="btn btn-primary" id="print-ok" type="button"><i data-icon="printer" data-size="16"></i> Drucken</button>
+    </div>
+  </div>
+</div>
+
+<!-- Inhalt für den Druck (nur beim Drucken sichtbar) -->
+<div id="print-area"></div>
 
 <div class="toast" id="toast"></div>
 

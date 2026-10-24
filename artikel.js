@@ -3,7 +3,8 @@ import {
   addDoc, collection, doc, updateDoc, deleteDoc, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { chf, parseChf, toInput, esc } from "./geld.js";
-import { ALLERGENE, ABTEILUNGEN, EINHEITEN, abteilungLabel } from "./stammdaten.js";
+import { ALLERGENE, ABTEILUNGEN, EINHEITEN, LAGERHINWEISE, abteilungLabel } from "./stammdaten.js";
+import { preislisteHtml, artikelblaetterHtml } from "./drucken.js";
 import { toast, openModal, closeModal } from "./ui.js";
 
 // Artikel-Liste, Detailansicht und (für den Admin) Bearbeiten
@@ -43,7 +44,7 @@ export function initArtikel(session) {
       (!saisonEl.checked || a.saison === true) &&
       (!katFilterEl.value || a.kategorieId === katFilterEl.value) &&
       (!abtFilterEl.value || (a.abteilungen || []).includes(abtFilterEl.value)) &&
-      (!q || a.name.toLowerCase().includes(q) || (a.zutaten || "").toLowerCase().includes(q))
+      (!q || a.name.toLowerCase().includes(q) || (a.artikelnummer || "").toLowerCase().includes(q) || (a.zutaten || "").toLowerCase().includes(q))
     );
   }
 
@@ -71,7 +72,7 @@ export function initArtikel(session) {
     listEl.innerHTML = namen.map((name) => `
       <div class="m-section-title">${esc(name)}</div>
       ${gruppen.get(name).map((a) => {
-        const sub = [mengeText(a), haltText(a)].filter(Boolean).join(" · ");
+        const sub = [a.artikelnummer ? `Nr. ${a.artikelnummer}` : "", mengeText(a), haltText(a)].filter(Boolean).join(" · ");
         const enth = allergenListe(a, "enthalten").map((x) => x.kurz);
         return `
         <button class="art-item ${a.active === false ? "is-inactive" : ""}" data-id="${a.id}" type="button">
@@ -105,7 +106,7 @@ export function initArtikel(session) {
         <div class="m-tint m-tint-indigo"><i data-icon="package"></i></div>
         <div>
           <h3>${esc(a.name)}</h3>
-          <div class="li-sub">${esc(katName(a))}${a.saison ? " · Saisonartikel" : ""}${a.active === false ? " · nicht im Verkauf" : ""}</div>
+          <div class="li-sub">${a.artikelnummer ? `Nr. ${esc(a.artikelnummer)} · ` : ""}${esc(katName(a))}${a.saison ? " · Saisonartikel" : ""}${a.active === false ? " · nicht im Verkauf" : ""}</div>
         </div>
       </div>
       <div class="preis-boxen">
@@ -115,6 +116,7 @@ export function initArtikel(session) {
       <div class="detail-grid">
         ${zeile("Menge", esc(mengeText(a)))}
         ${zeile("Haltbarkeit", a.haltbarkeitTage != null ? `${a.haltbarkeitTage} ${a.haltbarkeitTage === 1 ? "Tag" : "Tage"}` : "")}
+        ${zeile("Lagerung", esc(a.lagerung || ""))}
         ${zeile("Abteilungen", esc((a.abteilungen || []).map(abteilungLabel).join(", ")))}
       </div>
       <div class="detail-block">
@@ -139,6 +141,49 @@ export function initArtikel(session) {
     katFilterEl.value = kategorien.some((k) => k.id === aktuell) ? aktuell : "";
   }
 
+  // ---------- Drucken (alle) ----------
+  // Gedruckt wird, was gerade gefiltert ist – aber nur Artikel, die im Verkauf sind
+  const druckWahl = { art: "preisliste", preise: "beide" };
+  const druckRows = () => gefiltert().filter((a) => a.active !== false);
+  function filterText() {
+    const teile = [
+      abtFilterEl.value ? abteilungLabel(abtFilterEl.value) : "Alle Abteilungen",
+      katFilterEl.value ? kategorien.find((k) => k.id === katFilterEl.value)?.name : "Alle Kategorien",
+    ];
+    if (saisonEl.checked) teile.push("nur Saisonartikel");
+    if (sucheEl.value.trim()) teile.push(`Suche «${sucheEl.value.trim()}»`);
+    return teile.join(" · ");
+  }
+  function druckInfo() {
+    const n = druckRows().length;
+    document.getElementById("print-preise-feld").style.display = druckWahl.art === "preisliste" ? "" : "none";
+    document.getElementById("print-info").textContent =
+      `${n} Artikel im Verkauf (${filterText()}).` +
+      (druckWahl.art === "blaetter" ? ` Das ergibt ${n} ${n === 1 ? "Seite" : "Seiten"}.` : "") +
+      " Die Auswahl richtet sich nach den Filtern in der Liste.";
+  }
+  [["print-art", "art"], ["print-preise", "preise"]].forEach(([id, key]) =>
+    document.getElementById(id).addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      druckWahl[key] = b.dataset.wert;
+      b.parentElement.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
+      druckInfo();
+    })
+  );
+  document.getElementById("drucken-btn").addEventListener("click", () => { druckInfo(); openModal("print-modal"); });
+  document.getElementById("print-cancel").addEventListener("click", () => closeModal("print-modal"));
+  document.getElementById("print-ok").addEventListener("click", () => {
+    const rows = druckRows();
+    if (!rows.length) { toast("Keine Artikel zum Drucken"); return; }
+    const hilfen = { katName, mengeText, filterText: filterText(), preise: druckWahl.preise };
+    const area = document.getElementById("print-area");
+    area.className = druckWahl.art === "preisliste" ? "druck-preisliste" : "druck-blaetter";
+    area.innerHTML = druckWahl.art === "preisliste" ? preislisteHtml(rows, hilfen) : artikelblaetterHtml(rows, hilfen);
+    closeModal("print-modal");
+    setTimeout(() => window.print(), 100);
+  });
+
   if (!isAdmin) {
     return {
       setArtikel(list) { artikel = list; render(); },
@@ -148,6 +193,14 @@ export function initArtikel(session) {
 
   // ---------- Bearbeiten (nur Admin) ----------
   const f = (id) => document.getElementById(id);
+  f("a-lagerung").innerHTML = '<option value="">– kein Hinweis –</option>' +
+    LAGERHINWEISE.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join("") +
+    '<option value="__eigen">Eigener Text …</option>';
+  f("a-lagerung").addEventListener("change", () => {
+    const eigen = f("a-lagerung").value === "__eigen";
+    f("a-lagerung-eigen").style.display = eigen ? "" : "none";
+    if (eigen) f("a-lagerung-eigen").focus();
+  });
   f("a-einheit").innerHTML = EINHEITEN.map((e) => `<option value="${e}">${e}</option>`).join("");
   f("a-abteilungen").innerHTML = ABTEILUNGEN.map((a) => `
     <label class="chip-check"><input type="checkbox" value="${a.key}"><span>${esc(a.label)}</span></label>`).join("");
@@ -178,6 +231,12 @@ export function initArtikel(session) {
     f("edit-error").textContent = "";
     fuelleKategorieAuswahl(a?.kategorieId);
     f("a-name").value = a?.name || "";
+    f("a-nummer").value = a?.artikelnummer || "";
+    const lager = a?.lagerung || "";
+    const ausListe = !lager || LAGERHINWEISE.includes(lager);
+    f("a-lagerung").value = ausListe ? lager : "__eigen";
+    f("a-lagerung-eigen").value = ausListe ? "" : lager;
+    f("a-lagerung-eigen").style.display = ausListe ? "none" : "";
     f("a-preis-laden").value = toInput(a?.preisLaden);
     f("a-preis-tearoom").value = toInput(a?.preisTearoom);
     f("a-menge").value = a?.menge != null ? String(a.menge) : "";
@@ -191,7 +250,7 @@ export function initArtikel(session) {
     if (a) f("edit-toggle").textContent = a.active === false ? "Wieder aktivieren" : "Deaktivieren";
     closeModal("detail-modal");
     openModal("edit-modal");
-    if (!a) setTimeout(() => f("a-name").focus(), 50);
+    if (!a) setTimeout(() => f("a-nummer").focus(), 50);
   }
 
   f("artikel-neu").addEventListener("click", () => {
@@ -211,6 +270,12 @@ export function initArtikel(session) {
     if (artikel.some((a) => a.name.toLowerCase() === name.toLowerCase() && a.id !== bearbeite?.id)) {
       err.textContent = "Es gibt bereits einen Artikel mit diesem Namen."; return;
     }
+    const artikelnummer = f("a-nummer").value.trim();
+    if (artikelnummer) {
+      const doppelt = artikel.find((a) => (a.artikelnummer || "").toLowerCase() === artikelnummer.toLowerCase() && a.id !== bearbeite?.id);
+      if (doppelt) { err.textContent = `Die Art.-Nr. ${artikelnummer} hat bereits «${doppelt.name}».`; return; }
+    }
+    const lagerung = f("a-lagerung").value === "__eigen" ? f("a-lagerung-eigen").value.trim() : f("a-lagerung").value;
     const preisLaden = parseChf(f("a-preis-laden").value);
     const preisTearoom = parseChf(f("a-preis-tearoom").value);
     if (Number.isNaN(preisLaden)) { err.textContent = "«Preis Laden» ist keine gültige Zahl."; return; }
@@ -229,6 +294,7 @@ export function initArtikel(session) {
     f("a-allergene").querySelectorAll(".allergen-row").forEach((r) => { if (r.dataset.stufe) allergene[r.dataset.key] = r.dataset.stufe; });
 
     const daten = {
+      artikelnummer,
       name,
       kategorieId,
       kategorieName: kategorien.find((k) => k.id === kategorieId)?.name || "",
@@ -239,6 +305,7 @@ export function initArtikel(session) {
       einheit: menge !== null ? f("a-einheit").value : null,
       haltbarkeitTage,
       saison: f("a-saison").checked,
+      lagerung,
       zutaten: f("a-zutaten").value.trim(),
       allergene,
       updatedAt: serverTimestamp(),

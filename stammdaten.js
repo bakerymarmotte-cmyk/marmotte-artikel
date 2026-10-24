@@ -29,3 +29,12 @@ export const ABTEILUNGEN = [
 export const EINHEITEN = ["g", "kg", "ml", "l", "Stk"];
 
 export const abteilungLabel = (key) => ABTEILUNGEN.find((a) => a.key === key)?.label || key;
+
+// Vorschläge für den Lagerhinweis (im Formular zusätzlich «Eigener Text»)
+export const LAGERHINWEISE = [
+  "Kühl lagern (max. 5 °C)",
+  "Kühl und trocken lagern",
+  "Trocken lagern, vor Sonne schützen",
+  "Bei Raumtemperatur lagern",
+  "Tiefgekühlt lagern (–18 °C)",
+];
