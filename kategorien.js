@@ -18,14 +18,38 @@ export function initKategorien() {
   const cancelBtn = document.getElementById("kat-abbrechen");
   const titleEl = document.getElementById("kat-form-title");
   const listEl = document.getElementById("kat-list");
+  const vonEl = document.getElementById("kat-von");
+  const bisEl = document.getElementById("kat-bis");
+  const vorschlagEl = document.getElementById("kat-vorschlag");
+
+  // Leeres Feld → null, sonst ganze Zahl (NaN bei ungültiger Eingabe)
+  const zahl = (t) => { t = t.trim(); return t === "" ? null : (/^\d{1,9}$/.test(t) ? Number(t) : NaN); };
+
+  // Vorschlag für eine neue Kategorie: direkt nach dem höchsten bisherigen Bereich, gleiche Grösse (Standard 200)
+  function vorschlag() {
+    const mitBereich = kategorien.filter((k) => k.nrBis != null);
+    if (!mitBereich.length) return { von: 1000, bis: 1199 };
+    const letzte = mitBereich.reduce((a, b) => (b.nrBis > a.nrBis ? b : a));
+    const groesse = letzte.nrVon != null ? letzte.nrBis - letzte.nrVon + 1 : 200;
+    return { von: letzte.nrBis + 1, bis: letzte.nrBis + groesse };
+  }
+  function zeigeVorschlag() {
+    if (bearbeiteId) { vorschlagEl.textContent = ""; return; }
+    const v = vorschlag();
+    vorschlagEl.innerHTML = `Nächster freier Bereich: ${v.von}–${v.bis} <button type="button" class="link-btn" id="kat-vorschlag-ok">übernehmen</button>`;
+    document.getElementById("kat-vorschlag-ok").addEventListener("click", () => { vonEl.value = v.von; bisEl.value = v.bis; });
+  }
 
   function formularLeeren() {
     bearbeiteId = null;
     nameEl.value = "";
+    vonEl.value = "";
+    bisEl.value = "";
     errorEl.textContent = "";
     titleEl.textContent = "Neue Kategorie";
     saveBtn.textContent = "Kategorie anlegen";
     cancelBtn.style.display = "none";
+    zeigeVorschlag();
   }
 
   saveBtn.addEventListener("click", async () => {
@@ -35,13 +59,24 @@ export function initKategorien() {
     if (kategorien.some((k) => k.name.toLowerCase() === name.toLowerCase() && k.id !== bearbeiteId)) {
       errorEl.textContent = "Es gibt bereits eine Kategorie mit diesem Namen."; return;
     }
+    const nrVon = zahl(vonEl.value);
+    const nrBis = zahl(bisEl.value);
+    if (Number.isNaN(nrVon) || Number.isNaN(nrBis)) { errorEl.textContent = "Art.-Nr. bitte als ganze Zahl eingeben."; return; }
+    if ((nrVon === null) !== (nrBis === null)) { errorEl.textContent = "Bitte «von» und «bis» ausfüllen – oder beide leer lassen."; return; }
+    if (nrVon !== null) {
+      if (nrVon > nrBis) { errorEl.textContent = "«von» muss kleiner sein als «bis»."; return; }
+      const ueberschneidung = kategorien.find((k) => k.id !== bearbeiteId && k.nrVon != null && nrVon <= k.nrBis && nrBis >= k.nrVon);
+      if (ueberschneidung) {
+        errorEl.textContent = `Überschneidet sich mit «${ueberschneidung.name}» (${ueberschneidung.nrVon}–${ueberschneidung.nrBis}).`; return;
+      }
+    }
     saveBtn.disabled = true;
     try {
       if (bearbeiteId) {
-        await updateDoc(doc(db, "kategorien", bearbeiteId), { name, updatedAt: serverTimestamp() });
-        toast("Kategorie umbenannt");
+        await updateDoc(doc(db, "kategorien", bearbeiteId), { name, nrVon, nrBis, updatedAt: serverTimestamp() });
+        toast("Kategorie gespeichert");
       } else {
-        await addDoc(collection(db, "kategorien"), { name, active: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        await addDoc(collection(db, "kategorien"), { name, nrVon, nrBis, active: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         toast("Kategorie angelegt");
       }
       formularLeeren();
@@ -58,12 +93,13 @@ export function initKategorien() {
 
   function render() {
     if (!kategorien.length) { listEl.innerHTML = '<p class="hint-text">Noch keine Kategorien angelegt.</p>'; return; }
-    listEl.innerHTML = kategorien
+    listEl.innerHTML = [...kategorien]
+      .sort((a, b) => (a.nrVon ?? Infinity) - (b.nrVon ?? Infinity) || a.name.localeCompare(b.name, "de"))
       .map((k) => `
         <div class="list-item ${k.active === false ? "is-inactive" : ""}">
           <div class="li-main">
             <strong>${esc(k.name)}</strong>
-            <span class="li-sub">${anzahl(k.id)} Artikel${k.active === false ? " · inaktiv" : ""}</span>
+            <span class="li-sub">${k.nrVon != null ? `Nr. ${k.nrVon}–${k.nrBis} · ` : ""}${anzahl(k.id)} Artikel${k.active === false ? " · inaktiv" : ""}</span>
           </div>
           <div class="li-actions">
             <button class="icon-btn" data-edit="${k.id}" title="Umbenennen"><i data-icon="pencil" data-size="15"></i></button>
@@ -76,7 +112,10 @@ export function initKategorien() {
         const k = kategorien.find((x) => x.id === b.dataset.edit);
         bearbeiteId = k.id;
         nameEl.value = k.name;
-        titleEl.textContent = "Kategorie umbenennen";
+        vonEl.value = k.nrVon ?? "";
+        bisEl.value = k.nrBis ?? "";
+        vorschlagEl.textContent = "";
+        titleEl.textContent = "Kategorie bearbeiten";
         saveBtn.textContent = "Speichern";
         cancelBtn.style.display = "inline-flex";
         errorEl.textContent = "";
@@ -99,7 +138,7 @@ export function initKategorien() {
   }
 
   return {
-    setKategorien(list) { kategorien = list; render(); },
+    setKategorien(list) { kategorien = list; render(); zeigeVorschlag(); },
     setArtikel(list) { artikel = list; render(); },
   };
 }

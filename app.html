@@ -75,6 +75,11 @@
     <div class="card form-card">
       <h3 class="section-title" id="kat-form-title">Neue Kategorie</h3>
       <div class="field"><label for="kat-name">Name</label><input type="text" id="kat-name" maxlength="40" placeholder="z.B. Brot"></div>
+      <div class="form-row-2">
+        <div class="field"><label for="kat-von">Art.-Nr. von</label><input type="text" id="kat-von" inputmode="numeric" placeholder="z.B. 1000"></div>
+        <div class="field"><label for="kat-bis">Art.-Nr. bis</label><input type="text" id="kat-bis" inputmode="numeric" placeholder="z.B. 1199"></div>
+      </div>
+      <p class="hint-text" id="kat-vorschlag" style="margin:-6px 0 12px;"></p>
       <div class="error-text" id="kat-error"></div>
       <div class="btn-row">
         <button class="btn btn-secondary" id="kat-abbrechen" type="button" style="display:none;">Abbrechen</button>
@@ -129,13 +134,14 @@
   <div class="modal-sheet modal-wide">
     <h3 id="edit-title">Neuer Artikel</h3>
 
-    <div class="nr-name-row">
-      <div class="field"><label for="a-nummer">Art.-Nr.</label><input type="text" id="a-nummer" maxlength="20" placeholder="z.B. 1001"></div>
-      <div class="field"><label for="a-name">Name *</label><input type="text" id="a-name" maxlength="80" placeholder="z.B. Bauernbrot"></div>
-    </div>
     <div class="field">
       <label for="a-kategorie">Kategorie *</label>
       <select id="a-kategorie"></select>
+    </div>
+
+    <div class="nr-name-row">
+      <div class="field"><label for="a-nummer">Art.-Nr.</label><input type="text" id="a-nummer" maxlength="20" placeholder="z.B. 1001"></div>
+      <div class="field"><label for="a-name">Name *</label><input type="text" id="a-name" maxlength="80" placeholder="z.B. Bauernbrot"></div>
     </div>
 
     <div class="field">

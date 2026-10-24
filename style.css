@@ -375,6 +375,8 @@ h3.section-title { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
 .hw-ja { background: var(--m-chip-bg); border-color: transparent; color: var(--m-chip-fg); }
 
 /* Art.-Nr. + Name */
+.nr-bereich { color: var(--m-faint); }
+.link-btn { background: none; border: none; padding: 0; font: inherit; color: var(--m-accent-text); text-decoration: underline; cursor: pointer; }
 .nr-name-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px; }
 .seg-wide { display: flex; }
 .seg-wide button { flex: 1; padding: 9px 6px; font-size: 13.5px; }

@@ -254,6 +254,31 @@ export function initArtikel(session) {
     row.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.stufe === (stufe || "")));
   }
 
+  // ---------- Art.-Nr. aus dem Bereich der Kategorie ----------
+  let autoNr = null; // zuletzt automatisch vorgeschlagene Nummer
+  const kategorieVon = (id) => kategorien.find((k) => k.id === id);
+  function ersteFreieNr(kat, ausser) {
+    if (!kat || kat.nrVon == null) return null;
+    const belegt = new Set(artikel.filter((a) => a.id !== ausser).map((a) => a.artikelnummer).filter(Boolean));
+    for (let n = kat.nrVon; n <= kat.nrBis; n++) if (!belegt.has(String(n))) return String(n);
+    return null; // Bereich voll
+  }
+  function zeigeBereich() {
+    const kat = kategorieVon(f("a-kategorie").value);
+    f("a-nummer").placeholder = kat?.nrVon != null ? `${kat.nrVon}–${kat.nrBis}` : "z.B. 1001";
+  }
+  f("a-kategorie").addEventListener("change", () => {
+    zeigeBereich();
+    // Nur ausfüllen, wenn das Feld leer ist oder die Nummer vorher automatisch kam
+    const aktuell = f("a-nummer").value.trim();
+    if (aktuell && aktuell !== autoNr) return;
+    const kat = kategorieVon(f("a-kategorie").value);
+    const frei = ersteFreieNr(kat, bearbeite?.id);
+    if (kat?.nrVon != null && !frei) toast(`Der Nummernbereich von «${kat.name}» ist voll`);
+    f("a-nummer").value = frei || "";
+    autoNr = frei;
+  });
+
   function oeffneFormular(a) {
     bearbeite = a || null;
     f("edit-title").textContent = a ? "Artikel bearbeiten" : "Neuer Artikel";
@@ -261,6 +286,8 @@ export function initArtikel(session) {
     fuelleKategorieAuswahl(a?.kategorieId);
     f("a-name").value = a?.name || "";
     f("a-nummer").value = a?.artikelnummer || "";
+    autoNr = null;
+    zeigeBereich();
     const lager = a?.lagerung || "";
     const ausListe = !lager || LAGERHINWEISE.includes(lager);
     f("a-lagerung").value = ausListe ? lager : "__eigen";
@@ -280,7 +307,7 @@ export function initArtikel(session) {
     if (a) f("edit-toggle").textContent = a.active === false ? "Wieder aktivieren" : "Deaktivieren";
     closeModal("detail-modal");
     openModal("edit-modal");
-    if (!a) setTimeout(() => f("a-nummer").focus(), 50);
+    if (!a) setTimeout(() => f("a-kategorie").focus(), 50);
   }
 
   f("artikel-neu").addEventListener("click", () => {
@@ -304,6 +331,10 @@ export function initArtikel(session) {
     if (artikelnummer) {
       const doppelt = artikel.find((a) => (a.artikelnummer || "").toLowerCase() === artikelnummer.toLowerCase() && a.id !== bearbeite?.id);
       if (doppelt) { err.textContent = `Die Art.-Nr. ${artikelnummer} hat bereits «${doppelt.name}».`; return; }
+      const kat = kategorieVon(kategorieId);
+      const n = Number(artikelnummer);
+      if (kat?.nrVon != null && !(Number.isInteger(n) && n >= kat.nrVon && n <= kat.nrBis) &&
+          !confirm(`Die Art.-Nr. ${artikelnummer} liegt nicht im Bereich von «${kat.name}» (${kat.nrVon}–${kat.nrBis}). Trotzdem speichern?`)) return;
     }
     const lagerung = f("a-lagerung").value === "__eigen" ? f("a-lagerung-eigen").value.trim() : f("a-lagerung").value;
     const preisLaden = parseChf(f("a-preis-laden").value);
