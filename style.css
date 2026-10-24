@@ -274,7 +274,8 @@ h3.section-title { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
 .filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
 .filter-row select { padding: 9px 10px; font-size: 14px; width: 100%; min-width: 0; }
 .list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 2px 10px; }
-.check-inline { align-items: center; gap: 6px; font-size: 13px; color: var(--m-muted); cursor: pointer; }
+.list-checks { display: flex; gap: 14px; }
+.check-inline { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--m-muted); cursor: pointer; }
 .add-btn { width: 100%; margin-bottom: 8px; }
 
 .art-item {
@@ -343,3 +344,25 @@ h3.section-title { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
 .allergen-row[data-stufe="enthalten"] .seg button.active { background: var(--m-danger); color: #fff; }
 .allergen-row[data-stufe="spuren"] .seg button.active { background: var(--m-text); color: var(--m-bg); }
 .edit-extra { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--m-border); }
+
+/* Saison & nicht im Verkauf */
+.tag-saison, .tag-aus {
+  display: inline-block; vertical-align: 2px; margin-left: 4px; padding: 1px 7px; border-radius: 999px;
+  font-size: 11px; font-weight: 500;
+}
+.tag-saison { background: var(--m-t-indigo-bg); color: var(--m-t-indigo-fg); }
+.tag-aus { background: var(--m-card-soft); color: var(--m-muted); border: 1px solid var(--m-border); }
+.switch-row { display: flex; align-items: center; gap: 12px; margin: 2px 0 16px; cursor: pointer; font-size: 14px; }
+.switch-row input { position: absolute; opacity: 0; pointer-events: none; }
+.switch-row .sw {
+  flex-shrink: 0; width: 42px; height: 24px; border-radius: 999px; position: relative;
+  background: var(--m-border); transition: background .15s;
+}
+.switch-row .sw::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s;
+}
+.switch-row input:checked + .sw { background: var(--m-accent); }
+.switch-row input:checked + .sw::after { transform: translateX(18px); }
+.switch-row input:focus-visible + .sw { box-shadow: 0 0 0 3px var(--m-chip-bg); }
+.switch-row .hint-text { font-size: 12.5px; }

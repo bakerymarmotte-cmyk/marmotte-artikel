@@ -58,7 +58,10 @@
     </div>
     <div class="list-head">
       <span class="hint-text" id="artikel-anzahl"></span>
-      <label class="check-inline admin-only"><input type="checkbox" id="zeige-inaktive"> Inaktive zeigen</label>
+      <div class="list-checks">
+        <label class="check-inline"><input type="checkbox" id="nur-saison"> Nur Saison</label>
+        <label class="check-inline admin-only"><input type="checkbox" id="zeige-inaktive"> Inaktive zeigen</label>
+      </div>
     </div>
     <button class="btn btn-primary admin-only add-btn" id="artikel-neu" type="button"><i data-icon="plus" data-size="16"></i> Neuer Artikel</button>
     <div id="artikel-list"><p class="hint-text">Lädt …</p></div>
@@ -133,6 +136,12 @@
       <label>Abteilungen</label>
       <div class="chip-group" id="a-abteilungen"></div>
     </div>
+
+    <label class="switch-row">
+      <input type="checkbox" id="a-saison">
+      <span class="sw"></span>
+      <span><strong>Saisonartikel</strong><br><span class="hint-text">Nur zu bestimmten Zeiten im Sortiment</span></span>
+    </label>
 
     <div class="form-row-2">
       <div class="field"><label for="a-preis-laden">Preis Laden (CHF)</label><input type="text" id="a-preis-laden" inputmode="decimal" placeholder="leer = kein Preis"></div>

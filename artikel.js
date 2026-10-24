@@ -19,13 +19,14 @@ export function initArtikel(session) {
   const katFilterEl = document.getElementById("filter-kategorie");
   const abtFilterEl = document.getElementById("filter-abteilung");
   const inaktivEl = document.getElementById("zeige-inaktive");
+  const saisonEl = document.getElementById("nur-saison");
 
   abtFilterEl.innerHTML = '<option value="">Alle Abteilungen</option>' +
     ABTEILUNGEN.map((a) => `<option value="${a.key}">${esc(a.label)}</option>`).join("");
   // Abteilungs-Konten sehen zuerst ihre eigenen Artikel
   if (session.profile.abteilung) abtFilterEl.value = session.profile.abteilung;
 
-  [sucheEl, katFilterEl, abtFilterEl, inaktivEl].forEach((el) => el.addEventListener("input", render));
+  [sucheEl, katFilterEl, abtFilterEl, inaktivEl, saisonEl].forEach((el) => el.addEventListener("input", render));
 
   // ---------- Hilfen ----------
   const katName = (a) => kategorien.find((k) => k.id === a.kategorieId)?.name || a.kategorieName || "Ohne Kategorie";
@@ -38,7 +39,8 @@ export function initArtikel(session) {
   function gefiltert() {
     const q = sucheEl.value.trim().toLowerCase();
     return artikel.filter((a) =>
-      (inaktivEl.checked && isAdmin ? true : a.active !== false) &&
+      (!isAdmin || inaktivEl.checked || a.active !== false) &&
+      (!saisonEl.checked || a.saison === true) &&
       (!katFilterEl.value || a.kategorieId === katFilterEl.value) &&
       (!abtFilterEl.value || (a.abteilungen || []).includes(abtFilterEl.value)) &&
       (!q || a.name.toLowerCase().includes(q) || (a.zutaten || "").toLowerCase().includes(q))
@@ -57,7 +59,8 @@ export function initArtikel(session) {
 
     // Nach Kategorie gruppieren (Reihenfolge wie die Kategorienliste, «Ohne Kategorie» zuletzt)
     const gruppen = new Map();
-    for (const a of rows) {
+    const sortiert = [...rows].sort((x, y) => (x.active === false) - (y.active === false));
+    for (const a of sortiert) {
       const name = katName(a);
       if (!gruppen.has(name)) gruppen.set(name, []);
       gruppen.get(name).push(a);
@@ -73,7 +76,7 @@ export function initArtikel(session) {
         return `
         <button class="art-item ${a.active === false ? "is-inactive" : ""}" data-id="${a.id}" type="button">
           <div class="ai-main">
-            <div class="ai-name">${esc(a.name)}${a.active === false ? ' <span class="li-sub">· inaktiv</span>' : ""}</div>
+            <div class="ai-name">${esc(a.name)}${a.saison ? ' <span class="tag-saison">Saison</span>' : ""}${a.active === false ? ' <span class="tag-aus">nicht im Verkauf</span>' : ""}</div>
             ${sub ? `<div class="ai-sub">${esc(sub)}</div>` : ""}
             ${enth.length ? `<div class="ai-allerg">${esc(enth.join(" · "))}</div>` : ""}
           </div>
@@ -102,7 +105,7 @@ export function initArtikel(session) {
         <div class="m-tint m-tint-indigo"><i data-icon="package"></i></div>
         <div>
           <h3>${esc(a.name)}</h3>
-          <div class="li-sub">${esc(katName(a))}${a.active === false ? " · inaktiv" : ""}</div>
+          <div class="li-sub">${esc(katName(a))}${a.saison ? " · Saisonartikel" : ""}${a.active === false ? " · nicht im Verkauf" : ""}</div>
         </div>
       </div>
       <div class="preis-boxen">
@@ -180,6 +183,7 @@ export function initArtikel(session) {
     f("a-menge").value = a?.menge != null ? String(a.menge) : "";
     f("a-einheit").value = a?.einheit || "g";
     f("a-haltbarkeit").value = a?.haltbarkeitTage ?? "";
+    f("a-saison").checked = a?.saison === true;
     f("a-zutaten").value = a?.zutaten || "";
     f("a-abteilungen").querySelectorAll("input").forEach((i) => { i.checked = (a?.abteilungen || []).includes(i.value); });
     ALLERGENE.forEach((x) => setzeAllergen(x.key, a?.allergene?.[x.key]));
@@ -234,6 +238,7 @@ export function initArtikel(session) {
       menge,
       einheit: menge !== null ? f("a-einheit").value : null,
       haltbarkeitTage,
+      saison: f("a-saison").checked,
       zutaten: f("a-zutaten").value.trim(),
       allergene,
       updatedAt: serverTimestamp(),
@@ -262,7 +267,7 @@ export function initArtikel(session) {
   f("edit-toggle").addEventListener("click", async () => {
     if (!bearbeite) return;
     const neu = bearbeite.active === false;
-    if (!neu && !confirm(`«${bearbeite.name}» deaktivieren? Der Artikel wird für die Abteilungen ausgeblendet, bleibt aber gespeichert.`)) return;
+    if (!neu && !confirm(`«${bearbeite.name}» deaktivieren? Die Abteilungen sehen ihn dann grau als «nicht im Verkauf». Er bleibt gespeichert.`)) return;
     try {
       await updateDoc(doc(db, "artikel", bearbeite.id), { active: neu, updatedAt: serverTimestamp(), updatedBy: session.profile.name || "" });
       toast(neu ? "Artikel aktiviert" : "Artikel deaktiviert");
