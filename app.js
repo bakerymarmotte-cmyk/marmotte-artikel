@@ -30,7 +30,9 @@ async function start() {
   onSnapshot(
     query(collection(db, "kategorien"), orderBy("name")),
     (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // Reihenfolge nach Nummernbereich (Kategorien ohne Bereich alphabetisch am Schluss)
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.nrVon ?? Infinity) - (b.nrVon ?? Infinity) || a.name.localeCompare(b.name, "de"));
       artikel.setKategorien(list);
       kategorien?.setKategorien(list);
     },

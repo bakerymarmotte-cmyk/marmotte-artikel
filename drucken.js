@@ -13,7 +13,7 @@ const nrVergleich = (a, b) => {
   return x.localeCompare(y, "de", { numeric: true }) || a.name.localeCompare(b.name, "de");
 };
 
-function nachKategorie(rows, katName) {
+function nachKategorie(rows, katName, katRang) {
   const gruppen = new Map();
   for (const a of rows) {
     const k = katName(a);
@@ -21,12 +21,12 @@ function nachKategorie(rows, katName) {
     gruppen.get(k).push(a);
   }
   return [...gruppen.keys()]
-    .sort((x, y) => (x === "Ohne Kategorie") - (y === "Ohne Kategorie") || x.localeCompare(y, "de"))
+    .sort((x, y) => katRang(x) - katRang(y) || x.localeCompare(y, "de"))
     .map((k) => [k, gruppen.get(k).sort(nrVergleich)]);
 }
 
 /** Preisliste. preise: "beide" | "laden" | "tearoom" */
-export function preislisteHtml(rows, { preise, filterText, katName, mengeText }) {
+export function preislisteHtml(rows, { preise, filterText, katName, katRang, mengeText }) {
   const mitLaden = preise !== "tearoom";
   const mitTea = preise !== "laden";
   // Bei «Nur Laden» bzw. «Nur Tea Room» nur Artikel mit diesem Preis
@@ -34,7 +34,7 @@ export function preislisteHtml(rows, { preise, filterText, katName, mengeText })
   const titel = preise === "laden" ? "Preisliste Laden" : preise === "tearoom" ? "Preisliste Tea Room" : "Preisliste";
   const spalten = 2 + 1 + (mitLaden ? 1 : 0) + (mitTea ? 1 : 0);
 
-  const body = nachKategorie(liste, katName).map(([kat, artikel]) => `
+  const body = nachKategorie(liste, katName, katRang).map(([kat, artikel]) => `
     <tbody>
       <tr class="pl-kat"><td colspan="${spalten}">${esc(kat)}</td></tr>
       ${artikel.map((a) => `<tr>
@@ -62,8 +62,8 @@ export function preislisteHtml(rows, { preise, filterText, katName, mengeText })
 }
 
 /** Artikelblätter: ein A4 pro Artikel mit allen Angaben */
-export function artikelblaetterHtml(rows, { katName, mengeText }) {
-  return nachKategorie(rows, katName).flatMap(([, artikel]) => artikel).map((a) => {
+export function artikelblaetterHtml(rows, { katName, katRang, mengeText }) {
+  return nachKategorie(rows, katName, katRang).flatMap(([, artikel]) => artikel).map((a) => {
     const zeile = (label, wert) => `<tr><th>${label}</th><td>${wert || "–"}</td></tr>`;
     const halt = a.haltbarkeitTage != null ? `${a.haltbarkeitTage} ${a.haltbarkeitTage === 1 ? "Tag" : "Tage"}` : "";
     const stand = a.updatedAt?.toDate ? a.updatedAt.toDate().toLocaleDateString("de-CH") : "";

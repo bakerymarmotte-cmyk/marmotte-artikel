@@ -35,6 +35,8 @@ export function initArtikel(session) {
   const haltText = (a) => (a.haltbarkeitTage != null ? `${a.haltbarkeitTage} ${a.haltbarkeitTage === 1 ? "Tag" : "Tage"} haltbar` : "");
   const allergenListe = (a, stufe) => ALLERGENE.filter((x) => a.allergene?.[x.key] === stufe);
   const preis = (r) => (r != null ? chf(r) : "–");
+  // Position einer Kategorie in der (nach Nummernbereich sortierten) Kategorienliste; unbekannte zuletzt
+  const katRang = (name) => { const i = kategorien.findIndex((k) => k.name === name); return i < 0 ? Infinity : i; };
 
   // ---------- Liste ----------
   function gefiltert() {
@@ -66,8 +68,7 @@ export function initArtikel(session) {
       if (!gruppen.has(name)) gruppen.set(name, []);
       gruppen.get(name).push(a);
     }
-    const namen = [...gruppen.keys()].sort((x, y) =>
-      (x === "Ohne Kategorie") - (y === "Ohne Kategorie") || x.localeCompare(y));
+    const namen = [...gruppen.keys()].sort((x, y) => katRang(x) - katRang(y) || x.localeCompare(y, "de"));
 
     listEl.innerHTML = namen.map((name) => `
       <div class="m-section-title">${esc(name)}</div>
@@ -181,7 +182,7 @@ export function initArtikel(session) {
   document.getElementById("print-ok").addEventListener("click", () => {
     const rows = druckRows();
     if (!rows.length) { toast("Keine Artikel zum Drucken"); return; }
-    const hilfen = { katName, mengeText, filterText: filterText(), preise: druckWahl.preise };
+    const hilfen = { katName, katRang, mengeText, filterText: filterText(), preise: druckWahl.preise };
     const area = document.getElementById("print-area");
     area.className = druckWahl.art === "preisliste" ? "druck-preisliste" : "druck-blaetter";
     area.innerHTML = druckWahl.art === "preisliste" ? preislisteHtml(rows, hilfen) : artikelblaetterHtml(rows, hilfen);
