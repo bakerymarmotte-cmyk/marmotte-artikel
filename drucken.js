@@ -13,7 +13,7 @@ const nrVergleich = (a, b) => {
   return x.localeCompare(y, "de", { numeric: true }) || a.name.localeCompare(b.name, "de");
 };
 
-function nachKategorie(rows, katName, katRang) {
+function nachKategorie(rows, katName, katRang, unterRang = () => 0) {
   const gruppen = new Map();
   for (const a of rows) {
     const k = katName(a);
@@ -22,11 +22,11 @@ function nachKategorie(rows, katName, katRang) {
   }
   return [...gruppen.keys()]
     .sort((x, y) => katRang(x) - katRang(y) || x.localeCompare(y, "de"))
-    .map((k) => [k, gruppen.get(k).sort(nrVergleich)]);
+    .map((k) => [k, gruppen.get(k).sort((a, b) => unterRang(a) - unterRang(b) || nrVergleich(a, b))]);
 }
 
 /** Preisliste. preise: "beide" | "laden" | "tearoom" */
-export function preislisteHtml(rows, { preise, filterText, katName, katRang, mengeText }) {
+export function preislisteHtml(rows, { preise, filterText, katName, katRang, unterName, unterRang, mengeText }) {
   const mitLaden = preise !== "tearoom";
   const mitTea = preise !== "laden";
   // Bei «Nur Laden» bzw. «Nur Tea Room» nur Artikel mit diesem Preis
@@ -34,17 +34,26 @@ export function preislisteHtml(rows, { preise, filterText, katName, katRang, men
   const titel = preise === "laden" ? "Preisliste Laden" : preise === "tearoom" ? "Preisliste Tea Room" : "Preisliste";
   const spalten = 2 + 1 + (mitLaden ? 1 : 0) + (mitTea ? 1 : 0);
 
-  const body = nachKategorie(liste, katName, katRang).map(([kat, artikel]) => `
+  const body = nachKategorie(liste, katName, katRang, unterRang).map(([kat, artikel]) => {
+    let letzte = null;
+    return `
     <tbody>
       <tr class="pl-kat"><td colspan="${spalten}">${esc(kat)}</td></tr>
-      ${artikel.map((a) => `<tr>
+      ${artikel.map((a) => {
+        // Zwischentitel bei jeder neuen Unterkategorie
+        const uk = unterName(a);
+        const titel = uk && uk !== letzte ? `<tr class="pl-unter"><td colspan="${spalten}">${esc(uk)}</td></tr>` : "";
+        letzte = uk;
+        return `${titel}<tr>
         <td class="pl-nr">${esc(a.artikelnummer || "")}</td>
         <td>${esc(a.name)}${a.saison ? ' <span class="pl-saison">Saison</span>' : ""}</td>
         <td class="pl-menge">${esc(mengeText(a))}</td>
         ${mitLaden ? `<td class="r">${a.preisLaden != null ? chf(a.preisLaden) : ""}</td>` : ""}
         ${mitTea ? `<td class="r">${a.preisTearoom != null ? chf(a.preisTearoom) : ""}</td>` : ""}
-      </tr>`).join("")}
-    </tbody>`).join("");
+      </tr>`;
+      }).join("")}
+    </tbody>`;
+  }).join("");
 
   return `
     <div class="pr-head">
@@ -62,8 +71,8 @@ export function preislisteHtml(rows, { preise, filterText, katName, katRang, men
 }
 
 /** Artikelblätter: ein A4 pro Artikel mit allen Angaben */
-export function artikelblaetterHtml(rows, { katName, katRang, mengeText }) {
-  return nachKategorie(rows, katName, katRang).flatMap(([, artikel]) => artikel).map((a) => {
+export function artikelblaetterHtml(rows, { katName, katRang, unterName, unterRang, mengeText }) {
+  return nachKategorie(rows, katName, katRang, unterRang).flatMap(([, artikel]) => artikel).map((a) => {
     const zeile = (label, wert) => `<tr><th>${label}</th><td>${wert || "–"}</td></tr>`;
     const halt = a.haltbarkeitTage != null ? `${a.haltbarkeitTage} ${a.haltbarkeitTage === 1 ? "Tag" : "Tage"}` : "";
     const stand = a.updatedAt?.toDate ? a.updatedAt.toDate().toLocaleDateString("de-CH") : "";
@@ -73,7 +82,7 @@ export function artikelblaetterHtml(rows, { katName, katRang, mengeText }) {
         <div>
           <div class="ab-nr">${a.artikelnummer ? `Art.-Nr. ${esc(a.artikelnummer)}` : "&nbsp;"}</div>
           <div class="pr-title">${esc(a.name)}</div>
-          <div class="pr-sub">${esc(katName(a))}${a.saison ? " · Saisonartikel" : ""}</div>
+          <div class="pr-sub">${esc(katName(a))}${unterName(a) ? ` › ${esc(unterName(a))}` : ""}${a.saison ? " · Saisonartikel" : ""}</div>
         </div>
         <div class="pr-date">Marmotte</div>
       </div>

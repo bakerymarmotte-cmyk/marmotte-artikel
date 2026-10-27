@@ -4,6 +4,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { esc } from "./geld.js";
 import { toast } from "./ui.js";
+import { initUnterkategorien } from "./unterkategorien.js";
 
 // Kategorien verwalten (nur Admin). Kategorien werden nie gelöscht, nur deaktiviert –
 // so bleiben die Artikel immer einer Kategorie zugeordnet.
@@ -11,6 +12,7 @@ export function initKategorien() {
   let kategorien = [];
   let artikel = [];
   let bearbeiteId = null;
+  const unter = initUnterkategorien();
 
   const nameEl = document.getElementById("kat-name");
   const errorEl = document.getElementById("kat-error");
@@ -47,6 +49,7 @@ export function initKategorien() {
     beschrEl.value = "";
     vonEl.value = "";
     bisEl.value = "";
+    vonEl.disabled = bisEl.disabled = false;
     errorEl.textContent = "";
     titleEl.textContent = "Neue Kategorie";
     saveBtn.textContent = "Kategorie anlegen";
@@ -104,8 +107,10 @@ export function initKategorien() {
             <strong>${esc(k.name)}</strong>
             ${k.beschreibung ? `<span class="li-beschr">${esc(k.beschreibung)}</span>` : ""}
             <span class="li-sub">${k.nrVon != null ? `Nr. ${k.nrVon}–${k.nrBis} · ` : ""}${anzahl(k.id)} Artikel${k.active === false ? " · inaktiv" : ""}</span>
+            ${(k.unterkategorien || []).length ? `<span class="li-sub">↳ ${k.unterkategorien.length} Unterkategorien</span>` : ""}
           </div>
-          <div class="li-actions">
+          <div class="li-actions li-wrap">
+            <button class="btn btn-secondary btn-small" data-unter="${k.id}">Unterkat.${(k.unterkategorien || []).length ? ` (${k.unterkategorien.length})` : ""}</button>
             <button class="icon-btn" data-edit="${k.id}" title="Umbenennen"><i data-icon="pencil" data-size="15"></i></button>
             <button class="btn btn-secondary btn-small" data-toggle="${k.id}">${k.active === false ? "Aktivieren" : "Deaktivieren"}</button>
           </div>
@@ -119,7 +124,10 @@ export function initKategorien() {
         beschrEl.value = k.beschreibung || "";
         vonEl.value = k.nrVon ?? "";
         bisEl.value = k.nrBis ?? "";
-        vorschlagEl.textContent = "";
+        // Bereich sperren, sobald Unterkategorien ihre Blöcke darin haben
+        const gesperrt = (k.unterkategorien || []).length > 0;
+        vonEl.disabled = bisEl.disabled = gesperrt;
+        vorschlagEl.textContent = gesperrt ? "Der Nummernbereich ist fest, weil es Unterkategorien gibt." : "";
         titleEl.textContent = "Kategorie bearbeiten";
         saveBtn.textContent = "Speichern";
         cancelBtn.style.display = "inline-flex";
@@ -127,6 +135,7 @@ export function initKategorien() {
         window.scrollTo({ top: 0, behavior: "smooth" });
       })
     );
+    listEl.querySelectorAll("[data-unter]").forEach((b) => b.addEventListener("click", () => unter.oeffnen(b.dataset.unter)));
     listEl.querySelectorAll("[data-toggle]").forEach((b) =>
       b.addEventListener("click", async () => {
         const k = kategorien.find((x) => x.id === b.dataset.toggle);
@@ -143,7 +152,7 @@ export function initKategorien() {
   }
 
   return {
-    setKategorien(list) { kategorien = list; render(); zeigeVorschlag(); },
-    setArtikel(list) { artikel = list; render(); },
+    setKategorien(list) { kategorien = list; render(); zeigeVorschlag(); unter.setKategorien(list); },
+    setArtikel(list) { artikel = list; render(); unter.setArtikel(list); },
   };
 }

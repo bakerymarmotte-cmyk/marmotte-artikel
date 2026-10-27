@@ -55,6 +55,7 @@
     <div class="filter-row">
       <select id="filter-kategorie"><option value="">Alle Kategorien</option></select>
       <select id="filter-abteilung"><option value="">Alle Abteilungen</option></select>
+      <select id="filter-unterkategorie" style="display:none;"><option value="">Alle Unterkategorien</option></select>
     </div>
     <div class="list-head">
       <span class="hint-text" id="artikel-anzahl"></span>
@@ -139,6 +140,10 @@
       <label for="a-kategorie">Kategorie *</label>
       <select id="a-kategorie"></select>
     </div>
+    <div class="field" id="a-unter-feld" style="display:none;">
+      <label for="a-unterkategorie">Unterkategorie *</label>
+      <select id="a-unterkategorie"></select>
+    </div>
 
     <div class="nr-name-row">
       <div class="field"><label for="a-nummer">Art.-Nr.</label><input type="text" id="a-nummer" maxlength="20" placeholder="z.B. 1001"></div>
@@ -202,6 +207,27 @@
       <button class="btn btn-secondary btn-small" id="edit-toggle" type="button"></button>
       <button class="btn btn-danger btn-small" id="edit-delete" type="button"><i data-icon="trash-2" data-size="14"></i> Löschen</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal: Unterkategorien (Admin) -->
+<div class="modal-backdrop" id="unter-modal">
+  <div class="modal-sheet">
+    <h3 id="uk-title">Unterkategorien</h3>
+    <p class="hint-text" id="uk-ohne-bereich" style="display:none; margin-top:0;">Diese Kategorie hat keinen Nummernbereich. Die Unterkategorien bekommen deshalb auch keinen.</p>
+    <div class="field" id="uk-max-feld">
+      <label for="uk-max">Max. Unterkategorien</label>
+      <input type="text" id="uk-max" inputmode="numeric" placeholder="z.B. 8">
+      <span class="hint-text" id="uk-max-info"></span>
+    </div>
+    <div id="uk-list"></div>
+    <div class="uk-add-row">
+      <input type="text" id="uk-name" maxlength="40" placeholder="Neue Unterkategorie, z.B. Kaffee">
+      <button class="btn btn-primary btn-small" id="uk-add" type="button">Hinzufügen</button>
+    </div>
+    <p class="hint-text" id="uk-voll" style="display:none;">Alle Blöcke sind belegt. Eine Unterkategorie ohne Artikel löschen, um Platz zu schaffen.</p>
+    <div class="error-text" id="uk-error"></div>
+    <button class="btn btn-secondary" id="uk-close" type="button" style="width:100%; margin-top:12px;">Schliessen</button>
   </div>
 </div>
 

@@ -406,6 +406,7 @@ h3.section-title { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
   .pl-nr { width: 16mm; color: #333; white-space: nowrap; }
   .pl-menge { width: 22mm; color: #333; white-space: nowrap; }
   .pl-kat td { font-weight: 700; font-size: 10.5pt; padding-top: 12px; border-bottom: 1.5px solid #000; }
+  .pl-unter td { font-weight: 600; font-size: 9.5pt; padding-top: 7px; color: #333; font-style: italic; }
   .pl-table tbody { page-break-inside: auto; }
   .pl-saison { font-size: 7.5pt; border: 1px solid #888; border-radius: 6px; padding: 0 4px; color: #333; }
 
@@ -433,3 +434,17 @@ h3.section-title { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
 /* Kategorie-Beschreibung */
 .li-beschr { font-size: 13px; color: var(--m-text); opacity: .85; }
 .kat-beschr { margin: -6px 4px 10px; font-size: 13px; color: var(--m-muted); line-height: 1.4; }
+
+/* Unterkategorien */
+.li-wrap { flex-wrap: wrap; justify-content: flex-end; }
+.uk-add-row { display: flex; gap: 8px; margin-top: 10px; }
+.uk-add-row input {
+  flex: 1; min-width: 0; background: var(--m-surface-2); border: 1px solid var(--m-border); border-radius: var(--m-radius-sm);
+  padding: 10px 12px; font-size: 16px; font-family: inherit; color: var(--m-text);
+}
+.uk-add-row input:focus { outline: none; border-color: var(--m-accent); box-shadow: 0 0 0 3px var(--m-chip-bg); }
+#uk-max-feld .hint-text { margin-top: 4px; }
+.field input:disabled { opacity: .6; }
+.sub-title { margin: 4px 4px 8px 6px; font-size: 13px; font-weight: 600; color: var(--m-muted); display: flex; align-items: center; gap: 6px; }
+.sub-title::before { content: ""; width: 3px; height: 13px; border-radius: 2px; background: var(--m-t-indigo-fg); }
+#filter-unterkategorie { grid-column: 1 / -1; }

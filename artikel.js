@@ -5,6 +5,7 @@ import {
 import { chf, parseChf, toInput, esc } from "./geld.js";
 import { ALLERGENE, ABTEILUNGEN, EINHEITEN, LAGERHINWEISE, HINWEISE, abteilungLabel } from "./stammdaten.js";
 import { preislisteHtml, artikelblaetterHtml } from "./drucken.js";
+import { unterVon } from "./unterkategorien.js";
 import { toast, openModal, closeModal } from "./ui.js";
 
 // Artikel-Liste, Detailansicht und (für den Admin) Bearbeiten
@@ -21,13 +22,25 @@ export function initArtikel(session) {
   const abtFilterEl = document.getElementById("filter-abteilung");
   const inaktivEl = document.getElementById("zeige-inaktive");
   const saisonEl = document.getElementById("nur-saison");
+  const ukFilterEl = document.getElementById("filter-unterkategorie");
 
   abtFilterEl.innerHTML = '<option value="">Alle Abteilungen</option>' +
     ABTEILUNGEN.map((a) => `<option value="${a.key}">${esc(a.label)}</option>`).join("");
   // Abteilungs-Konten sehen zuerst ihre eigenen Artikel
   if (session.profile.abteilung) abtFilterEl.value = session.profile.abteilung;
 
-  [sucheEl, katFilterEl, abtFilterEl, inaktivEl, saisonEl].forEach((el) => el.addEventListener("input", render));
+  [sucheEl, abtFilterEl, inaktivEl, saisonEl, ukFilterEl].forEach((el) => el.addEventListener("input", render));
+  katFilterEl.addEventListener("input", () => { fuelleUnterFilter(); render(); });
+
+  // Zweite Filterstufe: nur sichtbar, wenn die gewählte Kategorie Unterkategorien hat
+  function fuelleUnterFilter() {
+    const unter = unterVon(kategorien.find((k) => k.id === katFilterEl.value));
+    const aktuell = ukFilterEl.value;
+    ukFilterEl.style.display = unter.length ? "" : "none";
+    ukFilterEl.innerHTML = '<option value="">Alle Unterkategorien</option>' +
+      unter.map((u) => `<option value="${u.id}">${esc(u.name)}</option>`).join("");
+    ukFilterEl.value = unter.some((u) => u.id === aktuell) ? aktuell : "";
+  }
 
   // ---------- Hilfen ----------
   const katName = (a) => kategorien.find((k) => k.id === a.kategorieId)?.name || a.kategorieName || "Ohne Kategorie";
@@ -37,6 +50,14 @@ export function initArtikel(session) {
   const preis = (r) => (r != null ? chf(r) : "–");
   // Position einer Kategorie in der (nach Nummernbereich sortierten) Kategorienliste; unbekannte zuletzt
   const katRang = (name) => { const i = kategorien.findIndex((k) => k.name === name); return i < 0 ? Infinity : i; };
+  // Unterkategorie eines Artikels (Objekt) und ihre Position innerhalb der Kategorie
+  const unterVonArtikel = (a) => (kategorien.find((k) => k.id === a.kategorieId)?.unterkategorien || []).find((u) => u.id === a.unterkategorieId) || null;
+  const unterName = (a) => unterVonArtikel(a)?.name || "";
+  const unterRang = (a) => {
+    const kat = kategorien.find((k) => k.id === a.kategorieId);
+    const i = unterVon(kat).findIndex((u) => u.id === a.unterkategorieId);
+    return i < 0 ? -1 : i; // ohne Unterkategorie zuerst
+  };
 
   // ---------- Liste ----------
   function gefiltert() {
@@ -45,6 +66,7 @@ export function initArtikel(session) {
       (!isAdmin || inaktivEl.checked || a.active !== false) &&
       (!saisonEl.checked || a.saison === true) &&
       (!katFilterEl.value || a.kategorieId === katFilterEl.value) &&
+      (!ukFilterEl.value || a.unterkategorieId === ukFilterEl.value) &&
       (!abtFilterEl.value || (a.abteilungen || []).includes(abtFilterEl.value)) &&
       (!q || a.name.toLowerCase().includes(q) || (a.artikelnummer || "").toLowerCase().includes(q) || (a.zutaten || "").toLowerCase().includes(q))
     );
@@ -70,13 +92,22 @@ export function initArtikel(session) {
     }
     const namen = [...gruppen.keys()].sort((x, y) => katRang(x) - katRang(y) || x.localeCompare(y, "de"));
 
-    listEl.innerHTML = namen.map((name) => `
+    listEl.innerHTML = namen.map((name) => {
+      // Innerhalb der Kategorie nach Unterkategorie ordnen; Zwischentitel bei jedem Wechsel
+      const liste = [...gruppen.get(name)].sort((x, y) => unterRang(x) - unterRang(y));
+      let letzte = null;
+      return `
       <div class="m-section-title">${esc(name)}</div>
       ${(() => { const b = kategorien.find((k) => k.name === name)?.beschreibung; return b ? `<p class="kat-beschr">${esc(b)}</p>` : ""; })()}
-      ${gruppen.get(name).map((a) => {
+      ${liste.map((a) => {
+        // Hat die Kategorie Unterkategorien, werden noch nicht zugeteilte Artikel als «Ohne Unterkategorie» markiert
+        const hatUnter = unterVon(kategorien.find((k) => k.id === a.kategorieId)).length > 0;
+        const uk = unterName(a) || (hatUnter ? "Ohne Unterkategorie" : "");
+        const titel = uk && uk !== letzte ? `<div class="sub-title">${esc(uk)}</div>` : "";
+        letzte = uk;
         const sub = [a.artikelnummer ? `Nr. ${a.artikelnummer}` : "", mengeText(a), haltText(a)].filter(Boolean).join(" · ");
         const enth = allergenListe(a, "enthalten").map((x) => x.kurz);
-        return `
+        return `${titel}
         <button class="art-item ${a.active === false ? "is-inactive" : ""}" data-id="${a.id}" type="button">
           <div class="ai-main">
             <div class="ai-name">${esc(a.name)}${a.saison ? ' <span class="tag-saison">Saison</span>' : ""}${a.active === false ? ' <span class="tag-aus">nicht im Verkauf</span>' : ""}</div>
@@ -88,7 +119,8 @@ export function initArtikel(session) {
             ${a.preisTearoom != null ? `<div><span class="ai-pl">Tea Room</span> <span class="mono">${chf(a.preisTearoom)}</span></div>` : ""}
           </div>
         </button>`;
-      }).join("")}`).join("");
+      }).join("")}`;
+    }).join("");
   }
 
   listEl.addEventListener("click", (e) => {
@@ -108,7 +140,7 @@ export function initArtikel(session) {
         <div class="m-tint m-tint-indigo"><i data-icon="package"></i></div>
         <div>
           <h3>${esc(a.name)}</h3>
-          <div class="li-sub">${a.artikelnummer ? `Nr. ${esc(a.artikelnummer)} · ` : ""}${esc(katName(a))}${a.saison ? " · Saisonartikel" : ""}${a.active === false ? " · nicht im Verkauf" : ""}</div>
+          <div class="li-sub">${a.artikelnummer ? `Nr. ${esc(a.artikelnummer)} · ` : ""}${esc(katName(a))}${unterName(a) ? ` › ${esc(unterName(a))}` : ""}${a.saison ? " · Saisonartikel" : ""}${a.active === false ? " · nicht im Verkauf" : ""}</div>
         </div>
       </div>
       <div class="preis-boxen">
@@ -145,6 +177,7 @@ export function initArtikel(session) {
     katFilterEl.innerHTML = '<option value="">Alle Kategorien</option>' +
       kategorien.map((k) => `<option value="${k.id}">${esc(k.name)}</option>`).join("");
     katFilterEl.value = kategorien.some((k) => k.id === aktuell) ? aktuell : "";
+    fuelleUnterFilter();
   }
 
   // ---------- Drucken (alle) ----------
@@ -182,7 +215,7 @@ export function initArtikel(session) {
   document.getElementById("print-ok").addEventListener("click", () => {
     const rows = druckRows();
     if (!rows.length) { toast("Keine Artikel zum Drucken"); return; }
-    const hilfen = { katName, katRang, mengeText, filterText: filterText(), preise: druckWahl.preise };
+    const hilfen = { katName, katRang, unterName, unterRang, mengeText, filterText: filterText(), preise: druckWahl.preise };
     const area = document.getElementById("print-area");
     area.className = druckWahl.art === "preisliste" ? "druck-preisliste" : "druck-blaetter";
     area.innerHTML = druckWahl.art === "preisliste" ? preislisteHtml(rows, hilfen) : artikelblaetterHtml(rows, hilfen);
@@ -265,21 +298,40 @@ export function initArtikel(session) {
     for (let n = kat.nrVon; n <= kat.nrBis; n++) if (!belegt.has(String(n))) return String(n);
     return null; // Bereich voll
   }
-  function zeigeBereich() {
+  // Massgebender Nummernbereich: die gewählte Unterkategorie, sonst die Kategorie (wenn sie keine Unterkategorien hat)
+  function aktuellerBereich() {
     const kat = kategorieVon(f("a-kategorie").value);
-    f("a-nummer").placeholder = kat?.nrVon != null ? `${kat.nrVon}–${kat.nrBis}` : "z.B. 1001";
+    if (!kat) return null;
+    if (unterVon(kat).length) {
+      const u = kat.unterkategorien.find((x) => x.id === f("a-unterkategorie").value);
+      return u?.nrVon != null ? { name: `${kat.name} › ${u.name}`, nrVon: u.nrVon, nrBis: u.nrBis } : null;
+    }
+    return kat.nrVon != null ? { name: kat.name, nrVon: kat.nrVon, nrBis: kat.nrBis } : null;
   }
-  f("a-kategorie").addEventListener("change", () => {
+  function zeigeBereich() {
+    const b = aktuellerBereich();
+    f("a-nummer").placeholder = b ? `${b.nrVon}–${b.nrBis}` : "z.B. 1001";
+  }
+  function nummerVorschlagen() {
     zeigeBereich();
     // Nur ausfüllen, wenn das Feld leer ist oder die Nummer vorher automatisch kam
     const aktuell = f("a-nummer").value.trim();
     if (aktuell && aktuell !== autoNr) return;
-    const kat = kategorieVon(f("a-kategorie").value);
-    const frei = ersteFreieNr(kat, bearbeite?.id);
-    if (kat?.nrVon != null && !frei) toast(`Der Nummernbereich von «${kat.name}» ist voll`);
+    const b = aktuellerBereich();
+    const frei = ersteFreieNr(b, bearbeite?.id);
+    if (b && !frei) toast(`Der Nummernbereich von «${b.name}» ist voll`);
     f("a-nummer").value = frei || "";
     autoNr = frei;
-  });
+  }
+  function fuelleUnterAuswahl(aktuell) {
+    const unter = unterVon(kategorieVon(f("a-kategorie").value));
+    f("a-unter-feld").style.display = unter.length ? "" : "none";
+    f("a-unterkategorie").innerHTML = '<option value="">Bitte wählen</option>' +
+      unter.map((u) => `<option value="${u.id}">${esc(u.name)}${u.nrVon != null ? ` (${u.nrVon}–${u.nrBis})` : ""}</option>`).join("");
+    f("a-unterkategorie").value = unter.some((u) => u.id === aktuell) ? aktuell : "";
+  }
+  f("a-kategorie").addEventListener("change", () => { fuelleUnterAuswahl(null); nummerVorschlagen(); });
+  f("a-unterkategorie").addEventListener("change", nummerVorschlagen);
 
   function oeffneFormular(a) {
     bearbeite = a || null;
@@ -289,6 +341,7 @@ export function initArtikel(session) {
     f("a-name").value = a?.name || "";
     f("a-nummer").value = a?.artikelnummer || "";
     autoNr = null;
+    fuelleUnterAuswahl(a?.unterkategorieId);
     zeigeBereich();
     const lager = a?.lagerung || "";
     const ausListe = !lager || LAGERHINWEISE.includes(lager);
@@ -326,6 +379,8 @@ export function initArtikel(session) {
     const kategorieId = f("a-kategorie").value;
     if (!name) { err.textContent = "Bitte einen Namen eingeben."; return; }
     if (!kategorieId) { err.textContent = "Bitte eine Kategorie wählen."; return; }
+    const unterkategorieId = unterVon(kategorieVon(kategorieId)).length ? f("a-unterkategorie").value : "";
+    if (unterVon(kategorieVon(kategorieId)).length && !unterkategorieId) { err.textContent = "Bitte eine Unterkategorie wählen."; return; }
     if (artikel.some((a) => a.name.toLowerCase() === name.toLowerCase() && a.id !== bearbeite?.id)) {
       err.textContent = "Es gibt bereits einen Artikel mit diesem Namen."; return;
     }
@@ -333,10 +388,10 @@ export function initArtikel(session) {
     if (artikelnummer) {
       const doppelt = artikel.find((a) => (a.artikelnummer || "").toLowerCase() === artikelnummer.toLowerCase() && a.id !== bearbeite?.id);
       if (doppelt) { err.textContent = `Die Art.-Nr. ${artikelnummer} hat bereits «${doppelt.name}».`; return; }
-      const kat = kategorieVon(kategorieId);
+      const b = aktuellerBereich();
       const n = Number(artikelnummer);
-      if (kat?.nrVon != null && !(Number.isInteger(n) && n >= kat.nrVon && n <= kat.nrBis) &&
-          !confirm(`Die Art.-Nr. ${artikelnummer} liegt nicht im Bereich von «${kat.name}» (${kat.nrVon}–${kat.nrBis}). Trotzdem speichern?`)) return;
+      if (b && !(Number.isInteger(n) && n >= b.nrVon && n <= b.nrBis) &&
+          !confirm(`Die Art.-Nr. ${artikelnummer} liegt nicht im Bereich von «${b.name}» (${b.nrVon}–${b.nrBis}). Trotzdem speichern?`)) return;
     }
     const lagerung = f("a-lagerung").value === "__eigen" ? f("a-lagerung-eigen").value.trim() : f("a-lagerung").value;
     const preisLaden = parseChf(f("a-preis-laden").value);
@@ -363,6 +418,7 @@ export function initArtikel(session) {
       artikelnummer,
       name,
       kategorieId,
+      unterkategorieId,
       kategorieName: kategorien.find((k) => k.id === kategorieId)?.name || "",
       abteilungen: [...f("a-abteilungen").querySelectorAll("input:checked")].map((i) => i.value),
       preisLaden,
