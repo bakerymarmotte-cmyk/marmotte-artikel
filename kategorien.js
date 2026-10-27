@@ -19,6 +19,7 @@ export function initKategorien() {
   const titleEl = document.getElementById("kat-form-title");
   const listEl = document.getElementById("kat-list");
   const vonEl = document.getElementById("kat-von");
+  const beschrEl = document.getElementById("kat-beschreibung");
   const bisEl = document.getElementById("kat-bis");
   const vorschlagEl = document.getElementById("kat-vorschlag");
 
@@ -43,6 +44,7 @@ export function initKategorien() {
   function formularLeeren() {
     bearbeiteId = null;
     nameEl.value = "";
+    beschrEl.value = "";
     vonEl.value = "";
     bisEl.value = "";
     errorEl.textContent = "";
@@ -55,6 +57,7 @@ export function initKategorien() {
   saveBtn.addEventListener("click", async () => {
     errorEl.textContent = "";
     const name = nameEl.value.trim();
+    const beschreibung = beschrEl.value.trim();
     if (!name) { errorEl.textContent = "Bitte einen Namen eingeben."; return; }
     if (kategorien.some((k) => k.name.toLowerCase() === name.toLowerCase() && k.id !== bearbeiteId)) {
       errorEl.textContent = "Es gibt bereits eine Kategorie mit diesem Namen."; return;
@@ -73,10 +76,10 @@ export function initKategorien() {
     saveBtn.disabled = true;
     try {
       if (bearbeiteId) {
-        await updateDoc(doc(db, "kategorien", bearbeiteId), { name, nrVon, nrBis, updatedAt: serverTimestamp() });
+        await updateDoc(doc(db, "kategorien", bearbeiteId), { name, beschreibung, nrVon, nrBis, updatedAt: serverTimestamp() });
         toast("Kategorie gespeichert");
       } else {
-        await addDoc(collection(db, "kategorien"), { name, nrVon, nrBis, active: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        await addDoc(collection(db, "kategorien"), { name, beschreibung, nrVon, nrBis, active: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         toast("Kategorie angelegt");
       }
       formularLeeren();
@@ -99,6 +102,7 @@ export function initKategorien() {
         <div class="list-item ${k.active === false ? "is-inactive" : ""}">
           <div class="li-main">
             <strong>${esc(k.name)}</strong>
+            ${k.beschreibung ? `<span class="li-beschr">${esc(k.beschreibung)}</span>` : ""}
             <span class="li-sub">${k.nrVon != null ? `Nr. ${k.nrVon}–${k.nrBis} · ` : ""}${anzahl(k.id)} Artikel${k.active === false ? " · inaktiv" : ""}</span>
           </div>
           <div class="li-actions">
@@ -112,6 +116,7 @@ export function initKategorien() {
         const k = kategorien.find((x) => x.id === b.dataset.edit);
         bearbeiteId = k.id;
         nameEl.value = k.name;
+        beschrEl.value = k.beschreibung || "";
         vonEl.value = k.nrVon ?? "";
         bisEl.value = k.nrBis ?? "";
         vorschlagEl.textContent = "";

@@ -71,6 +71,7 @@ export function initArtikel(session) {
 
     listEl.innerHTML = namen.map((name) => `
       <div class="m-section-title">${esc(name)}</div>
+      ${(() => { const b = kategorien.find((k) => k.name === name)?.beschreibung; return b ? `<p class="kat-beschr">${esc(b)}</p>` : ""; })()}
       ${gruppen.get(name).map((a) => {
         const sub = [a.artikelnummer ? `Nr. ${a.artikelnummer}` : "", mengeText(a), haltText(a)].filter(Boolean).join(" · ");
         const enth = allergenListe(a, "enthalten").map((x) => x.kurz);

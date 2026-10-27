@@ -429,3 +429,7 @@ h3.section-title { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
   .ab-allergene tr.is-enthalten td { font-weight: 700; }
   .ab-foot { margin-top: 14px; font-size: 8pt; color: #555; }
 }
+
+/* Kategorie-Beschreibung */
+.li-beschr { font-size: 13px; color: var(--m-text); opacity: .85; }
+.kat-beschr { margin: -6px 4px 10px; font-size: 13px; color: var(--m-muted); line-height: 1.4; }
