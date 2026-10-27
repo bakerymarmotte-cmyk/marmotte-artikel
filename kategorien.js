@@ -49,7 +49,6 @@ export function initKategorien() {
     beschrEl.value = "";
     vonEl.value = "";
     bisEl.value = "";
-    vonEl.disabled = bisEl.disabled = false;
     errorEl.textContent = "";
     titleEl.textContent = "Neue Kategorie";
     saveBtn.textContent = "Kategorie anlegen";
@@ -71,6 +70,10 @@ export function initKategorien() {
     if ((nrVon === null) !== (nrBis === null)) { errorEl.textContent = "Bitte «von» und «bis» ausfüllen – oder beide leer lassen."; return; }
     if (nrVon !== null) {
       if (nrVon > nrBis) { errorEl.textContent = "«von» muss kleiner sein als «bis»."; return; }
+      // Alle Unterkategorien müssen im Bereich der Kategorie bleiben
+      const alt = kategorien.find((k) => k.id === bearbeiteId);
+      const draussen = (alt?.unterkategorien || []).find((u) => u.nrVon != null && (u.nrVon < nrVon || u.nrBis > nrBis));
+      if (draussen) { errorEl.textContent = `Die Unterkategorie «${draussen.name}» (${draussen.nrVon}–${draussen.nrBis}) läge ausserhalb.`; return; }
       const ueberschneidung = kategorien.find((k) => k.id !== bearbeiteId && k.nrVon != null && nrVon <= k.nrBis && nrBis >= k.nrVon);
       if (ueberschneidung) {
         errorEl.textContent = `Überschneidet sich mit «${ueberschneidung.name}» (${ueberschneidung.nrVon}–${ueberschneidung.nrBis}).`; return;
@@ -124,10 +127,8 @@ export function initKategorien() {
         beschrEl.value = k.beschreibung || "";
         vonEl.value = k.nrVon ?? "";
         bisEl.value = k.nrBis ?? "";
-        // Bereich sperren, sobald Unterkategorien ihre Blöcke darin haben
-        const gesperrt = (k.unterkategorien || []).length > 0;
-        vonEl.disabled = bisEl.disabled = gesperrt;
-        vorschlagEl.textContent = gesperrt ? "Der Nummernbereich ist fest, weil es Unterkategorien gibt." : "";
+
+        vorschlagEl.textContent = (k.unterkategorien || []).length ? "Der Bereich muss alle Unterkategorien umfassen." : "";
         titleEl.textContent = "Kategorie bearbeiten";
         saveBtn.textContent = "Speichern";
         cancelBtn.style.display = "inline-flex";

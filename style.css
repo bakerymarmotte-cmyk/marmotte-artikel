@@ -448,3 +448,5 @@ h3.section-title { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
 .sub-title { margin: 4px 4px 8px 6px; font-size: 13px; font-weight: 600; color: var(--m-muted); display: flex; align-items: center; gap: 6px; }
 .sub-title::before { content: ""; width: 3px; height: 13px; border-radius: 2px; background: var(--m-t-indigo-fg); }
 #filter-unterkategorie { grid-column: 1 / -1; }
+.uk-form { padding: 14px; margin-top: 12px; box-shadow: none; }
+.uk-form-title { font-weight: 600; font-size: 14px; margin-bottom: 10px; }
