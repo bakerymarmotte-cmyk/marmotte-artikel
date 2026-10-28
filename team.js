@@ -23,9 +23,12 @@ export function initTeam(session) {
   function rolleGeaendert() {
     const abt = rolleEl.value === "abteilung";
     abtFeld.style.visibility = abt ? "visible" : "hidden";
-    hinweisEl.textContent = abt
-      ? "Gemeinsames Konto für die Abteilung, kann nur lesen. Das Passwort gilt direkt, es muss nicht geändert werden."
-      : "Admin-Konto. Das Passwort muss beim ersten Login geändert werden.";
+    hinweisEl.textContent = {
+      abteilung: "Gemeinsames Konto für die Abteilung, kann Artikel nur lesen. Das Passwort gilt direkt, es muss nicht geändert werden.",
+      backstube: "Gemeinsames Konto für die Backstube: liest Artikel und Rezepte (ohne Einkaufspreise). Das Passwort gilt direkt.",
+      admin: "Admin-Konto. Das Passwort muss beim ersten Login geändert werden.",
+    }[rolleEl.value];
+    if (rolleEl.value === "backstube" && !document.getElementById("emp-name").value) document.getElementById("emp-name").placeholder = "Backstube";
     if (abt && !document.getElementById("emp-name").value) document.getElementById("emp-name").placeholder = abtEl.selectedOptions[0]?.text || "";
   }
   rolleEl.addEventListener("change", rolleGeaendert);
@@ -42,7 +45,7 @@ export function initTeam(session) {
           <div class="list-item ${u.active === false ? "is-inactive" : ""}">
             <div class="li-main">
               <strong>${esc(u.name)}</strong>
-              <span class="li-sub">${esc(u.email)} · ${u.role === "admin" ? "Admin" : "Abteilung " + esc(abteilungLabel(u.abteilung))}${u.active === false ? " · inaktiv" : ""}</span>
+              <span class="li-sub">${esc(u.email)} · ${u.role === "admin" ? "Admin" : u.role === "backstube" ? "Backstube" : "Abteilung " + esc(abteilungLabel(u.abteilung))}${u.active === false ? " · inaktiv" : ""}</span>
             </div>
             ${u.id === session.uid ? '<span class="li-sub">Du</span>' :
               `<button class="btn btn-secondary btn-small" data-toggle="${u.id}" data-active="${u.active !== false}">${u.active === false ? "Aktivieren" : "Deaktivieren"}</button>`}
@@ -75,7 +78,7 @@ export function initTeam(session) {
     errorEl.textContent = "";
     const role = rolleEl.value;
     // Bei Abteilungs-Konten ist der Name standardmässig der Abteilungsname
-    const name = document.getElementById("emp-name").value.trim() || (role === "abteilung" ? abteilungLabel(abtEl.value) : "");
+    const name = document.getElementById("emp-name").value.trim() || (role === "abteilung" ? abteilungLabel(abtEl.value) : role === "backstube" ? "Backstube" : "");
     const email = document.getElementById("emp-email").value.trim();
     const password = document.getElementById("emp-password").value;
     if (!name || !email) { errorEl.textContent = "Bitte Name und E-Mail ausfüllen."; return; }
